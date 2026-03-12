@@ -121,6 +121,8 @@ var timerInterval = null;
 var cupN = 0, studN = 0;
 var spawnT = null, studT = null;
 var userLat = null, userLon = null;
+var DEFAULT_LAT = 55.7539;  // пример: Москва, Красная площадь
+var DEFAULT_LON = 37.6208;
 
 var OFFSET_MIN = 0.00003;
 var OFFSET_MAX = 0.00012;
@@ -290,11 +292,13 @@ var gpsFallbackShown = false;
 function showGpsFallback() {
   if (gpsFallbackShown || gameStarted) return;
   gpsFallbackShown = true;
-  var content = document.getElementById('gps-hint-content');
-  var fallback = document.getElementById('gps-fallback');
-  if (content) content.style.display = 'none';
-  if (fallback) fallback.style.display = 'block';
-  infoEl.textContent = 'GPS недоступен. Используй AR по маркеру (кнопка выше).';
+  userLat = DEFAULT_LAT;
+  userLon = DEFAULT_LON;
+  gpsHint.style.display = 'none';
+  infoEl.textContent = 'GPS недоступен. Используем демо-координаты (Москва, Красная площадь).';
+  gameStarted = true;
+  startSpawn();
+  startTimer();
 }
 
 function bindGpsListener() {
