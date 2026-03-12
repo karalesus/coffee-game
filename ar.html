@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Кофейня AR</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/aframe/build/aframe-ar.js"></script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { overflow:hidden; background:#000; font-family:'Segoe UI',sans-serif; touch-action:none; }
+
+    #btns {
+      position:fixed; top:12px; left:0; right:0; z-index:9999;
+      display:flex; justify-content:center; gap:8px; padding:0 12px;
+      pointer-events:auto;
+    }
+    .abtn {
+      background:rgba(0,0,0,.82); color:#fff;
+      border:2px solid rgba(255,200,80,.5);
+      padding:10px 16px; border-radius:10px; font-size:13px;
+      cursor:pointer; text-decoration:none; font-weight:bold;
+      -webkit-tap-highlight-color:transparent;
+      touch-action:manipulation;
+    }
+    .abtn:active { background:rgba(80,40,0,.9); }
+
+    #hud {
+      position:fixed; top:62px; left:50%; transform:translateX(-50%);
+      z-index:9999; pointer-events:none;
+      background:rgba(60,30,0,.88); border:2px solid rgba(255,200,80,.4);
+      border-radius:14px; padding:8px 26px; color:#FFD700;
+      font-size:1.4em; font-weight:bold;
+    }
+    #info {
+      position:fixed; bottom:16px; left:50%; transform:translateX(-50%);
+      z-index:9999; pointer-events:none;
+      background:rgba(0,0,0,.78); color:#fff;
+      padding:10px 18px; border-radius:10px; font-size:13px;
+      max-width:92%; text-align:center;
+    }
+    #mhint {
+      position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+      z-index:9998; text-align:center; pointer-events:none;
+    }
+    .mbox {
+      width:170px; height:170px; border:3px solid rgba(0,210,255,.7);
+      border-radius:14px; display:flex; align-items:center; justify-content:center;
+      animation:mp 1.8s ease-in-out infinite; margin:0 auto;
+    }
+    @keyframes mp { 0%,100%{opacity:.6;transform:scale(1)} 50%{opacity:1;transform:scale(1.06)} }
+    .mtxt { color:rgba(0,210,255,.9); font-size:14px; font-weight:bold;
+            margin-top:10px; background:rgba(0,0,0,.6); padding:6px 14px; border-radius:8px; }
+    .fps {
+      position:fixed; font-size:30px; font-weight:bold;
+      pointer-events:none; z-index:9999;
+      animation:fup 1s ease-out forwards;
+    }
+    .fps.g { color:#FFD700; text-shadow:0 0 12px gold; }
+    .fps.b { color:#FF4444; }
+    @keyframes fup { 0%{opacity:1;transform:translateY(0) scale(1.2)} 100%{opacity:0;transform:translateY(-70px) scale(.8)} }
+  </style>
+</head>
+<body>
+
+<div id="btns">
+  <a class="abtn" href="index.html">← Игра</a>
+  <a class="abtn" href="ar-gps.html">AR GPS</a>
+  <button class="abtn" id="btn-nm">Без маркера</button>
+  <a class="abtn" href="https://jeromeetienne.github.io/AR.js/data/images/HIRO.jpg" target="_blank">Маркер</a>
+</div>
+
+<div id="hud">Очки: <span id="sc">0</span></div>
+<div id="info">Наведи камеру на маркер Hiro</div>
+<div id="mhint">
+  <div class="mbox"></div>
+  <div class="mtxt">Наведи на маркер Hiro</div>
+</div>
+
+<a-scene
+  id="arscene"
+  embedded
+  arjs="sourceType:webcam; debugUIEnabled:false; detectionMode:mono_and_matrix; matrixCodeType:3x3;"
+  renderer="logarithmicDepthBuffer:true; precision:medium;"
+  vr-mode-ui="enabled:false"
+  loading-screen="enabled:false">
+
+  <a-assets timeout="10000">
+    <img id="wtex" src="https://cdn.aframe.io/a-painter/images/floor.jpg" crossorigin="anonymous">
+    <a-asset-item id="cup-glb" src="assets/coffee_cup.glb"></a-asset-item>
+  </a-assets>
+
+  <a-marker id="hiro" preset="hiro" smooth="true" smoothCount="5" emitevents="true">
+    <a-entity id="ar-root" scale="0.5 0.5 0.5" visible="true">
+
+      <a-light type="ambient" color="#ffeedd" intensity="0.8"></a-light>
+      <a-light type="point" color="#ffcc99" intensity="1.5" position="0 1.5 0" distance="6"></a-light>
+      <a-entity geometry="primitive:plane; width:3; height:3"
+                material="src:#wtex; repeat:2 2; color:#8B5A2B"
+                rotation="-90 0 0" position="0 0.01 0">
+      </a-entity>
+      <a-entity geometry="primitive:plane; width:3; height:2"
+                material="color:#5c2500"
+                position="0 1 -1.5">
+      </a-entity>
+      <a-text value="Кофейня AR" color="#FFD700" align="center"
+              position="0 1.75 -1.48" scale="0.6 0.6 0.6"
+              animation="property:color; from:#FFD700; to:#FF8C00; dur:1200; dir:alternate; loop:true">
+      </a-text>
+
+      <a-entity id="ar-counter" position="0 0 -1.1">
+        <a-entity geometry="primitive:box; width:2.2; height:0.3; depth:0.55" material="color:#8B4513; src:#wtex" position="0 0.15 0"></a-entity>
+        <a-entity position="0 0.48 0">
+          <a-entity geometry="primitive:box; width:0.28; height:0.32; depth:0.2"
+                    material="color:#C0392B; metalness:0.7">
+          </a-entity>
+          <a-entity geometry="primitive:plane; width:0.12; height:0.07"
+                    material="color:#00FFAA; emissive:#00FFAA"
+                    position="0 0.05 0.105">
+          </a-entity>
+          <a-entity geometry="primitive:cylinder; radius:0.015; height:0.08"
+                    material="color:#888; metalness:0.9"
+                    position="0 -0.09 0.105" rotation="90 0 0">
+          </a-entity>
+          <a-entity geometry="primitive:sphere; radius:0.018"
+                    material="color:#FF4444; emissive:#FF4444"
+                    position="0.12 0.12 0.105"
+                    animation="property:material.emissiveIntensity; from:0.2; to:1.5; dur:700; dir:alternate; loop:true">
+          </a-entity>
+        </a-entity>
+      </a-entity>
+      <a-entity position="-0.8 0 0.2">
+        <a-entity geometry="primitive:box; width:0.9; height:0.04; depth:0.6"
+                  material="color:#a0522d; src:#wtex"
+                  position="0 0.44 0">
+        </a-entity>
+        <a-entity geometry="primitive:cylinder; radius:0.022; height:0.44"
+                  material="color:#5c3a1e" position="-0.4 0.22 -0.25">
+        </a-entity>
+        <a-entity geometry="primitive:cylinder; radius:0.022; height:0.44"
+                  material="color:#5c3a1e" position="0.4 0.22 -0.25">
+        </a-entity>
+        <a-entity geometry="primitive:cylinder; radius:0.022; height:0.44"
+                  material="color:#5c3a1e" position="-0.4 0.22 0.25">
+        </a-entity>
+        <a-entity geometry="primitive:cylinder; radius:0.022; height:0.44"
+                  material="color:#5c3a1e" position="0.4 0.22 0.25">
+        </a-entity>
+      </a-entity>
+      <a-entity position="0 1.9 -0.5">
+        <a-entity geometry="primitive:cylinder; radius:0.012; height:0.4"
+                  material="color:#333" position="0 -0.2 0">
+        </a-entity>
+        <a-entity geometry="primitive:cone; radiusBottom:0.22; radiusTop:0.04; height:0.2"
+                  material="color:#B8860B; emissive:#7a5500" position="0 -0.5 0">
+        </a-entity>
+        <a-light type="point" color="#FFCC66" intensity="1.4" distance="4" position="0 -0.5 0"></a-light>
+      </a-entity>
+      <a-text id="score3d" value="Очки: 0" color="#FFD700" align="center" position="0 1.4 0.5" scale="0.5 0.5 0.5"></a-text>
+      <a-entity id="cups-box"></a-entity>
+      <a-entity id="studs-box"></a-entity>
+    </a-entity>
+  </a-marker>
+  <a-entity id="ar-cam" camera></a-entity>
+
+</a-scene>
+
+<script>
+var score = 0, cupN = 0, studN = 0, spawnT = null, studT = null, gameOn = false, nmMode = false, camEl = null, _actx;
+var scEl = document.getElementById('sc'), infoEl = document.getElementById('info'), mhint = document.getElementById('mhint');
+var arscene = document.getElementById('arscene'), marker = document.getElementById('hiro');
+
+function ac() {
+  if (!_actx) _actx = new (window.AudioContext || window.webkitAudioContext)();
+  return _actx;
+}
+function beep(f, d, v) {
+  try {
+    var c = ac(), o = c.createOscillator(), g = c.createGain();
+    o.connect(g); g.connect(c.destination);
+    o.type = 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(v || 0.3, c.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + d);
+    o.start(); o.stop(c.currentTime + d);
+  } catch(e) {}
+}
+function sndOk()  { beep(523,.12,.4); setTimeout(function(){beep(659,.12,.4);},100); }
+function sndBad() { beep(200,.25,.3); }
+
+function addScore(n) {
+  score = Math.max(0, score + n);
+  scEl.textContent = score;
+  var t = document.getElementById('score3d');
+  if (t) t.setAttribute('value', 'Очки: ' + score);
+}
+
+function showPts(txt, good) {
+  var d = document.createElement('div');
+  d.className = 'fps ' + (good ? 'g' : 'b');
+  d.textContent = txt;
+  d.style.left = (38 + Math.random() * 24) + '%';
+  d.style.top  = '40%';
+  document.body.appendChild(d);
+  setTimeout(function() { d.remove(); }, 1100);
+}
+
+function getCamera(cb) {
+  var cam = document.querySelector('[camera]');
+  if (cam && cam.object3D) { cb(cam); return; }
+  var t = setInterval(function() {
+    var c = document.querySelector('[camera]');
+    if (c && c.object3D) { clearInterval(t); cb(c); }
+  }, 200);
+}
+
+function makeCup(container, isNM) {
+  var id = 'cup' + (cupN++);
+  var x, y, z;
+  if (isNM) {
+    x = (Math.random() - 0.5) * 1.4;
+    y = (Math.random() - 0.5) * 0.6;
+    z = -(1.0 + Math.random() * 0.5);
+  } else {
+    x = (Math.random() - 0.5) * 1.8;
+    y = 0.3 + Math.random() * 0.9;
+    z = (Math.random() - 0.5) * 1.6;
+  }
+  var el = document.createElement('a-entity');
+  el.setAttribute('id', id);
+  el.setAttribute('class', 'clickable');
+  el.setAttribute('data-clickable', '');
+  el.setAttribute('position', x + ' ' + y + ' ' + z);
+  el.setAttribute('geometry', 'primitive:cylinder; radiusTop:0.08; radiusBottom:0.065; height:0.2; segmentsRadial:8');
+  el.setAttribute('material', 'opacity:0; transparent:true; side:double');
+
+  var model = document.createElement('a-entity');
+  model.setAttribute('gltf-model', '#cup-glb');
+  el.appendChild(model);
+  var steam = document.createElement('a-entity');
+  steam.setAttribute('geometry', 'primitive:sphere; radius:0.016');
+  steam.setAttribute('material', 'color:#fff; opacity:0.4; transparent:true');
+  steam.setAttribute('position', '0 0.14 0');
+  steam.setAttribute('animation', 'property:position; from:0 0.14 0; to:0 0.32 0; dur:1000; loop:true; easing:easeOutQuad');
+  steam.setAttribute('animation__f', 'property:material.opacity; from:0.4; to:0; dur:1000; loop:true');
+  el.appendChild(steam);
+
+  // Анимации
+  el.setAttribute('animation__spin', 'property:rotation; from:0 0 0; to:0 360 0; dur:2500; loop:true; easing:linear');
+  el.setAttribute('animation__bob',
+    'property:position.y; from:' + y + '; to:' + (y + 0.1) +
+    '; dur:' + (1100 + Math.floor(Math.random() * 300)) +
+    '; dir:alternate; loop:true; easing:easeInOutSine');
+
+  var taken = false;
+  function onTap(e) {
+    if (taken) return;
+    e.preventDefault(); e.stopPropagation();
+    taken = true;
+    var pts = 5;
+    addScore(pts); sndOk(); showPts('+' + pts, true);
+    infoEl.textContent = '+' + pts + ' | Очки: ' + score;
+    el.setAttribute('animation__col', 'property:scale; from:1 1 1; to:0 0 0; dur:250; easing:easeInBack');
+    setTimeout(function() { if (el.parentNode) el.remove(); }, 280);
+  }
+  el.addEventListener('click',      onTap);
+  el.addEventListener('touchstart', onTap, { passive: false });
+  el.addEventListener('mouseenter', function() {
+    el.setAttribute('scale', '1.2 1.2 1.2');
+  });
+  el.addEventListener('mouseleave', function() {
+    el.setAttribute('scale', '1 1 1');
+  });
+
+  container.appendChild(el);
+  setTimeout(function() { if (!taken && el.parentNode) el.remove(); }, 5000);
+}
+
+function makeStud(container, isNM) {
+  var id = 'stud' + (studN++);
+  var side = Math.random() < 0.5 ? -1 : 1;
+  var cols = ['#4a7c59', '#3498DB', '#9B59B6', '#E74C3C'];
+  var col = cols[Math.floor(Math.random() * cols.length)];
+  var dur = 3500 + Math.floor(Math.random() * 2000);
+  var startX, endX, y, z;
+  if (isNM) {
+    startX = side * 1.0; endX = -startX;
+    y = -0.3; z = -(1.0 + Math.random() * 0.4);
+  } else {
+    startX = side * 1.6; endX = -startX;
+    y = 0; z = (Math.random() - 0.5) * 1.4;
+  }
+  var el = document.createElement('a-entity');
+  el.setAttribute('id', id);
+  el.setAttribute('class', 'clickable');
+  el.setAttribute('data-clickable', '');
+  el.setAttribute('position', startX + ' ' + y + ' ' + z);
+  el.setAttribute('rotation', '0 ' + (side > 0 ? 270 : 90) + ' 0');
+  el.setAttribute('geometry', 'primitive:box; width:0.25; height:0.55; depth:0.25');
+  el.setAttribute('material', 'opacity:0; transparent:true; side:double');
+
+  var torso = document.createElement('a-entity');
+  torso.setAttribute('geometry', 'primitive:cylinder; radius:0.09; height:0.22');
+  torso.setAttribute('material', 'color:' + col);
+  torso.setAttribute('position', '0 0.11 0');
+  var head = document.createElement('a-entity');
+  head.setAttribute('geometry', 'primitive:sphere; radius:0.09');
+  head.setAttribute('material', 'color:#e8c4a0');
+  head.setAttribute('position', '0 0.2 0');
+  head.setAttribute('animation', 'property:rotation; from:0 0 -5; to:0 0 5; dur:450; dir:alternate; loop:true');
+  torso.appendChild(head);
+  function mkLeg(px, fa, ta) {
+    var l = document.createElement('a-entity');
+    l.setAttribute('geometry', 'primitive:box; width:0.06; height:0.22; depth:0.06');
+    l.setAttribute('material', 'color:#2C3E50');
+    l.setAttribute('position', px);
+    l.setAttribute('animation', 'property:rotation; from:' + fa + ' 0 0; to:' + ta + ' 0 0; dur:380; dir:alternate; loop:true');
+    return l;
+  }
+  torso.appendChild(mkLeg('-.05 -.19 0', '-18', '18'));
+  torso.appendChild(mkLeg('.05 -.19 0', '18', '-18'));
+  el.appendChild(torso);
+  el.setAttribute('animation__walk',
+    'property:position; from:' + startX + ' ' + y + ' ' + z +
+    '; to:' + endX + ' ' + y + ' ' + z +
+    '; dur:' + dur + '; easing:linear');
+
+  el.addEventListener('mouseenter', function() { torso.setAttribute('material', 'color:#FF4444'); });
+  el.addEventListener('mouseleave', function() { torso.setAttribute('material', 'color:' + col); });
+
+  var hit = false;
+  function onHit(e) {
+    if (hit) return;
+    e.preventDefault(); e.stopPropagation();
+    hit = true;
+    addScore(-5); sndBad(); showPts('-5', false);
+    infoEl.textContent = '-5! Не трогай студентов! Очки: ' + score;
+    el.setAttribute('animation__flash', 'property:scale; from:1.4 1.4 1.4; to:1 1 1; dur:260');
+    setTimeout(function() { if (el.parentNode) el.remove(); }, 400);
+  }
+  el.addEventListener('click',      onHit);
+  el.addEventListener('touchstart', onHit, { passive: false });
+
+  container.appendChild(el);
+  setTimeout(function() { if (!hit && el.parentNode) el.remove(); }, dur + 300);
+}
+
+/* ═══════════════════════════════════════════
+   СПАВН
+═══════════════════════════════════════════ */
+function startSpawn(isNM) {
+  gameOn = true;
+  var cupBox  = isNM ? camEl : document.getElementById('cups-box');
+  var studBox = isNM ? camEl : document.getElementById('studs-box');
+  makeCup(cupBox, isNM);
+  spawnT = setInterval(function() { makeCup(cupBox,  isNM); }, 2200);
+  studT  = setInterval(function() { makeStud(studBox, isNM); }, 4200);
+}
+
+function stopSpawn() {
+  gameOn = false;
+  clearInterval(spawnT); clearInterval(studT);
+}
+
+function addCursorToCamera(cam) {
+  if (cam.querySelector('a-cursor')) return;
+  var cur = document.createElement('a-cursor');
+  cur.setAttribute('fuse', 'false');
+  cur.setAttribute('color', '#ffaa00');
+  cur.setAttribute('material', 'shader:flat; color:#ffaa00; opacity:0.85');
+  cur.setAttribute('raycaster', 'far: 4; objects: .clickable');
+  cam.appendChild(cur);
+}
+
+var pointerHandlerBound = false;
+function setupPointerHandler() {
+  if (pointerHandlerBound) return;
+  var scene = arscene.object3D;
+  var canvas = arscene.canvas || (arscene.renderer && arscene.renderer.domElement);
+  if (!canvas) {
+    setTimeout(setupPointerHandler, 400);
+    return;
+  }
+  var mouse = new THREE.Vector2();
+  var raycaster = new THREE.Raycaster();
+
+  function getEntityFromIntersection(obj) {
+    while (obj) {
+      if (obj.el) return obj.el;
+      obj = obj.parent;
+    }
+    return null;
+  }
+
+  function onPointer(evt) {
+    var clientX = evt.clientX != null ? evt.clientX : (evt.touches && evt.touches[0] ? evt.touches[0].clientX : 0);
+    var clientY = evt.clientY != null ? evt.clientY : (evt.touches && evt.touches[0] ? evt.touches[0].clientY : 0);
+    var rect = canvas.getBoundingClientRect();
+    mouse.x = (clientX - rect.left) / rect.width * 2 - 1;
+    mouse.y = -(clientY - rect.top) / rect.height * 2 + 1;
+
+    var camEl = document.querySelector('[camera]');
+    if (!camEl || !camEl.components || !camEl.components.camera) return;
+    var threeCamera = camEl.components.camera.camera;
+    raycaster.setFromCamera(mouse, threeCamera);
+    var intersects = raycaster.intersectObject(scene, true);
+    for (var i = 0; i < intersects.length; i++) {
+      var el = getEntityFromIntersection(intersects[i].object);
+      if (el && el.classList && el.classList.contains('clickable')) {
+        el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+        if (evt.preventDefault) evt.preventDefault();
+        break;
+      }
+    }
+  }
+
+  canvas.addEventListener('click', onPointer, false);
+  canvas.addEventListener('touchstart', function(e) {
+    onPointer(e);
+  }, { passive: false });
+  pointerHandlerBound = true;
+}
+
+var nmWorld = null;
+
+function buildNMWorld(cam) {
+  var old = document.getElementById('nm-world');
+  if (old && old.parentNode) old.parentNode.removeChild(old);
+
+  var world = document.createElement('a-entity');
+  world.setAttribute('id', 'nm-world');
+  world.setAttribute('position', '0 0 -1.5');
+
+  var bg = document.createElement('a-entity');
+  bg.setAttribute('geometry', 'primitive:plane; width:2.5; height:1.8');
+  bg.setAttribute('material', 'color:#3a1500; opacity:0.55; transparent:true; side:double');
+  bg.setAttribute('position', '0 0 -0.02');
+  world.appendChild(bg);
+
+  var lbl = document.createElement('a-text');
+  lbl.setAttribute('value', 'Кофейня — без маркера');
+  lbl.setAttribute('color', '#FFD700');
+  lbl.setAttribute('align', 'center');
+  lbl.setAttribute('position', '0 0.72 0');
+  lbl.setAttribute('scale', '0.44 0.44 0.44');
+  world.appendChild(lbl);
+
+  cam.appendChild(world);
+  nmWorld = world;
+  camEl   = world;
+}
+
+marker.addEventListener('markerFound', function() {
+  mhint.style.display = 'none';
+  infoEl.textContent = 'Маркер найден! Тапай стаканчики (+5), не трогай студентов (−5)';
+  if (!gameOn && !nmMode) { camEl = null; startSpawn(false); }
+});
+
+marker.addEventListener('markerLost', function() {
+  mhint.style.display = 'block';
+  infoEl.textContent = 'Потерял маркер… Наведи снова. Очки: ' + score;
+});
+
+document.getElementById('btn-nm').addEventListener('click', function() {
+  nmMode = !nmMode;
+  if (nmMode) {
+    this.textContent = 'С маркером';
+    mhint.style.display = 'none';
+    infoEl.textContent = 'Режим без маркера — тапай стаканчики';
+    stopSpawn();
+    var arRoot = document.getElementById('ar-root');
+    if (arRoot) arRoot.setAttribute('visible', 'false');
+    getCamera(function(cam) { addCursorToCamera(cam); buildNMWorld(cam); startSpawn(true); });
+  } else {
+    this.textContent = 'Без маркера';
+    mhint.style.display = 'block';
+    infoEl.textContent = 'Наведи камеру на маркер Hiro';
+    stopSpawn();
+    if (nmWorld && nmWorld.parentNode) { nmWorld.parentNode.removeChild(nmWorld); nmWorld = null; }
+    var arRoot = document.getElementById('ar-root');
+    if (arRoot) arRoot.setAttribute('visible', 'true');
+  }
+});
+
+arscene.addEventListener('loaded', function() {
+  infoEl.textContent = 'Наведи камеру на маркер Hiro ☝️';
+  getCamera(function(cam) { addCursorToCamera(cam); });
+  setupPointerHandler();
+});
+</script>
+</body>
+</html>
