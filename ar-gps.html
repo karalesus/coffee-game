@@ -3,8 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#8B4513">
   <title>Кофейня AR (GPS)</title>
   <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
   <script src="https://unpkg.com/aframe-look-at-component@1.0.0/dist/aframe-look-at-component.min.js"></script>
@@ -41,7 +39,7 @@
   </div>
 </div>
 
-<div id="info">Поверни телефон — ищи стаканчики вокруг! Тапай (+5), не трогай студентов (−5).</div>
+<div id="info">Поверни телефон и ищи стаканчики вокруг! Тапай (+5), не трогай студентов (−5).</div>
 
 <div id="gps-wait">
   <div style="font-size:24px;margin-bottom:12px">Получение GPS...</div>
@@ -82,9 +80,8 @@ var score=0, timeLeft=60, timerInt=null;
 var cupN=0, studN=0, spawnT=null, studT=null, _actx;
 var userLat=null, userLon=null, gameStarted=false;
 
-/* ── Звук (на телефоне нужен первый тап для разблокировки) ── */
+/* ── Звук ── */
 function ac(){ if(!_actx)_actx=new(window.AudioContext||window.webkitAudioContext)(); return _actx; }
-function unlockAudio(){ try{ var c=ac(); if(c.state==='suspended') c.resume(); }catch(e){} }
 function beep(f,d){ try{ var c=ac(),o=c.createOscillator(),g=c.createGain(); o.connect(g);g.connect(c.destination); o.frequency.value=f;g.gain.setValueAtTime(0.3,c.currentTime);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+d);o.start();o.stop(c.currentTime+d); }catch(e){} }
 function sndOk(){ beep(523,0.12); setTimeout(function(){beep(659,0.12);},100); }
 function sndBad(){ beep(200,0.25); }
@@ -189,7 +186,6 @@ function startGame(){
 }
 
 document.getElementById('btn-again').addEventListener('click',function(){
-  unlockAudio();
   resultEl.classList.remove('show');
   score=0; scEl.textContent='0'; gameStarted=false;
   timeLeft=60; timerEl.textContent='60';
@@ -233,33 +229,63 @@ if(navigator.geolocation){
 /* Если через 12 секунд GPS не пришёл — фолбэк */
 setTimeout(function(){ if(!gameStarted) useFallback(); }, 12000);
 
-/* Тап по объекту */
+/* Тап по объекту: переводим экранные координаты в луч и ищем кликабельную сущность */
 document.querySelector('a-scene').addEventListener('loaded', function(){
   var canvas = this.canvas;
-  var ray = new THREE.Raycaster();
-  var mouse = new THREE.Vector2();
   var scene3d = this.object3D;
+  var raycaster = new THREE.Raycaster();
+  var pointerNDC = new THREE.Vector2(); // нормализованные координаты -1..1
 
-  function onTap(evt){
-    unlockAudio();
-    var cx = evt.clientX!=null?evt.clientX:(evt.touches&&evt.touches[0]?evt.touches[0].clientX:0);
-    var cy = evt.clientY!=null?evt.clientY:(evt.touches&&evt.touches[0]?evt.touches[0].clientY:0);
-    var r = canvas.getBoundingClientRect();
-    mouse.x = (cx-r.left)/r.width*2-1;
-    mouse.y = -(cy-r.top)/r.height*2+1;
-    var cam = document.querySelector('[camera]');
-    if(!cam||!cam.components||!cam.components.camera) return;
-    ray.setFromCamera(mouse, cam.components.camera.camera);
-    var hits = ray.intersectObject(scene3d, true);
-    for(var i=0;i<hits.length;i++){
-      var obj=hits[i].object;
-      while(obj){ if(obj.el&&obj.el.classList&&obj.el.classList.contains('clickable')){ obj.el.dispatchEvent(new MouseEvent('click',{bubbles:true})); return; } obj=obj.parent; }
+  /** Из события мыши/тача достаём координаты на экране */
+  function getPointerCoords(evt){
+    var x = (evt.touches && evt.touches[0]) ? evt.touches[0].clientX : evt.clientX;
+    var y = (evt.touches && evt.touches[0]) ? evt.touches[0].clientY : evt.clientY;
+    return { x: x || 0, y: y || 0 };
+  }
+
+  /** Экранные координаты → нормализованные для Three.js (-1..1 по центру канваса) */
+  function toNDC(screenX, screenY){
+    var rect = canvas.getBoundingClientRect();
+    pointerNDC.x = (screenX - rect.left) / rect.width * 2 - 1;
+    pointerNDC.y = -(screenY - rect.top) / rect.height * 2 + 1;
+  }
+
+  /** Ищем A-Frame entity с классом clickable, поднимаясь от 3D-объекта вверх по родителям */
+  function findClickableEntity(threeObject){
+    var obj = threeObject;
+    while (obj) {
+      if (obj.el && obj.el.classList && obj.el.classList.contains('clickable')) {
+        return obj.el;
+      }
+      obj = obj.parent;
+    }
+    return null;
+  }
+
+  /** Обработчик тапа: луч из камеры → пересечения со сценой → первый clickable получает click */
+  function onPointerTap(evt){
+    var coords = getPointerCoords(evt);
+    toNDC(coords.x, coords.y);
+
+    var camEl = document.querySelector('[camera]');
+    if (!camEl || !camEl.components || !camEl.components.camera) return;
+    var threeCamera = camEl.components.camera.camera;
+
+    raycaster.setFromCamera(pointerNDC, threeCamera);
+    var hits = raycaster.intersectObject(scene3d, true);
+
+    for (var i = 0; i < hits.length; i++) {
+      var entity = findClickableEntity(hits[i].object);
+      if (entity) {
+        entity.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        return;
+      }
     }
   }
-  canvas.addEventListener('click', onTap, false);
-  canvas.addEventListener('touchstart', function(e){e.preventDefault();onTap(e);},{passive:false});
+
+  canvas.addEventListener('click', onPointerTap, false);
+  canvas.addEventListener('touchstart', function(e){ e.preventDefault(); onPointerTap(e); }, { passive: false });
 });
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){});
 </script>
 </body>
 </html>

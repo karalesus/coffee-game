@@ -3,8 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#8B4513">
   <title>Кофейня — Собери стаканчики!</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/n5ro/aframe-physics-system@v4.0.1/dist/aframe-physics-system.min.js"></script>
@@ -219,7 +217,6 @@ function getACtx() {
   if (!_actx) _actx = new (window.AudioContext || window.webkitAudioContext)();
   return _actx;
 }
-function unlockAudio() { try { var c = getACtx(); if (c.state === 'suspended') c.resume(); } catch(e) {} }
 function playTone(freq, type, dur, vol, delay) {
   vol = vol || 0.28; delay = delay || 0;
   try {
@@ -286,7 +283,6 @@ function updCombo() {
 }
 
 function startGame() {
-  unlockAudio();
   score=0; timeLeft=GAME_DURATION; combo=0; maxCombo=0; caught=0; miss=0;
   cupN=0; studN=0; gameRunning=true;
   clearInterval(timerID); clearInterval(spawnID); clearInterval(studID);
@@ -382,8 +378,6 @@ function spawnStudent() {
   var id   = 'stud' + (studN++);
   var side = Math.random()<.5 ? -1 : 1;
   var z    = (Math.random()-.5)*10 - 2;
-  var colors = ['#4a7c59','#3498DB','#9B59B6','#E74C3C'];
-  var col  = colors[Math.floor(Math.random()*colors.length)];
   var dur  = 4000 + Math.floor(Math.random()*2000);
 
   var el = document.createElement('a-entity');
@@ -392,19 +386,19 @@ function spawnStudent() {
   el.setAttribute('data-clickable', '');
   el.setAttribute('position', (side*14)+' 0 '+z);
   el.setAttribute('rotation','0 '+(side>0?270:90)+' 0');
-  el.setAttribute('geometry','primitive: box; width: 0.7; height: 1.4; depth: 0.7');
-  el.setAttribute('material','opacity: 0; transparent: true; side: double');
+  el.setAttribute('geometry', 'primitive: box; width: 0.7; height: 1.4; depth: 0.7');
+  el.setAttribute('material', 'opacity: 0; transparent: true; side: double');
 
-  var torso = document.createElement('a-entity');
-  torso.setAttribute('gltf-model','#student-model');
-  torso.setAttribute('scale','0.7 0.7 0.7');
-  torso.setAttribute('position','0 -0.7 0');
-  el.appendChild(torso);
+  var model = document.createElement('a-entity');
+  model.setAttribute('gltf-model', '#student-model');
+  model.setAttribute('scale', '0.5 0.5 0.5');
+  model.setAttribute('position', '0 -0.27 0');
+  el.appendChild(model);
 
   el.setAttribute('animation__walk','property: position; from: '+(side*14)+' 0 '+z+'; to: '+(-side*14)+' 0 '+z+'; dur: '+dur+'; easing: linear');
 
-  el.addEventListener('mouseenter', function(){ torso.setAttribute('scale','0.78 0.78 0.78'); });
-  el.addEventListener('mouseleave', function(){ torso.setAttribute('scale','0.7 0.7 0.7'); });
+  el.addEventListener('mouseenter', function(){ model.setAttribute('scale', '0.55 0.55 0.55'); });
+  el.addEventListener('mouseleave', function(){ model.setAttribute('scale', '0.5 0.5 0.5'); });
 
   var hit = false;
   el.addEventListener('click', function(){
@@ -418,10 +412,6 @@ function spawnStudent() {
 
   gameObjects.appendChild(el);
   setTimeout(function(){ if(!hit && el.parentNode) el.remove(); }, dur+200);
-}
-
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(function() {});
 }
 </script>
 </body>

@@ -4,8 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#8B4513">
   <title>Кофейня AR</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/aframe/build/aframe-ar.js"></script>
@@ -178,7 +176,6 @@ function ac() {
   if (!_actx) _actx = new (window.AudioContext || window.webkitAudioContext)();
   return _actx;
 }
-function unlockAudio() { try { var c = ac(); if (c.state === 'suspended') c.resume(); } catch(e) {} }
 function beep(f, d, v) {
   try {
     var c = ac(), o = c.createOscillator(), g = c.createGain();
@@ -381,7 +378,6 @@ function setupPointerHandler() {
   }
 
   function onPointer(evt) {
-    unlockAudio();
     var clientX = evt.clientX != null ? evt.clientX : (evt.touches && evt.touches[0] ? evt.touches[0].clientX : 0);
     var clientY = evt.clientY != null ? evt.clientY : (evt.touches && evt.touches[0] ? evt.touches[0].clientY : 0);
     var rect = canvas.getBoundingClientRect();
@@ -472,11 +468,10 @@ document.getElementById('btn-nm').addEventListener('click', function() {
 });
 
 arscene.addEventListener('loaded', function() {
-  infoEl.textContent = 'Наведи камеру на маркер Hiro';
+  infoEl.textContent = 'Наведи камеру на маркер Hiro ☝️';
   getCamera(function(cam) { addCursorToCamera(cam); });
   setupPointerHandler();
 });
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){});
 </script>
 </body>
 </html>
