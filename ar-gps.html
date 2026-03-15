@@ -5,12 +5,11 @@
   <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
   <title>Кофейня AR (GPS)</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/aframe/build/aframe-ar.js"></script>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
-    body{overflow:hidden;background:#000;font-family:'Segoe UI',sans-serif;touch-action:none}
-    #cam-bg{position:fixed;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:0}
-    .aframe-canvas{z-index:1!important}
-    #btns{position:fixed;top:12px;left:0;right:0;z-index:99;display:flex;justify-content:center;gap:8px;padding:0 12px}
+    body{overflow:hidden;font-family:'Segoe UI',sans-serif;touch-action:none}
+    #btns{position:fixed;top:12px;left:0;right:0;z-index:99;display:flex;justify-content:center;gap:8px;padding:0 12px;pointer-events:auto}
     .abtn{background:rgba(0,0,0,.8);color:#fff;border:2px solid rgba(255,200,80,.5);padding:10px 16px;border-radius:10px;font-size:13px;cursor:pointer;text-decoration:none;font-weight:bold}
     #hud{position:fixed;top:62px;left:50%;transform:translateX(-50%);z-index:99;pointer-events:none;background:rgba(60,30,0,.88);border:2px solid rgba(255,200,80,.4);border-radius:14px;padding:8px 26px;color:#FFD700;font-size:1.4em;font-weight:bold}
     #coords{position:fixed;top:110px;left:50%;transform:translateX(-50%);z-index:99;pointer-events:none;font-size:12px;color:#fff;background:rgba(0,0,0,.6);padding:4px 10px;border-radius:6px}
@@ -26,15 +25,13 @@
 </head>
 <body>
 
-<video id="cam-bg" autoplay playsinline muted></video>
-
 <div id="btns">
   <a class="abtn" href="index.html">← Игра</a>
   <a class="abtn" href="ar.html">AR маркер</a>
 </div>
 <div id="hud">Очки: <span id="sc">0</span> | <span id="timer">60</span> с</div>
 <div id="coords">GPS: <span id="coord-val">определяем...</span></div>
-<div id="info">Крути телефон — ищи стаканчики вокруг! Тапай на них (+5), не трогай студентов (−5).</div>
+<div id="info">Тапай стаканчики (+5), не трогай студентов (−5). 60 сек.</div>
 
 <div id="result">
   <h2>Время вышло!</h2>
@@ -44,9 +41,10 @@
 </div>
 
 <a-scene
-  id="scene"
+  id="sc3d"
   embedded
-  renderer="alpha:true; antialias:true"
+  arjs="sourceType:webcam; debugUIEnabled:false; detectionMode:mono_and_matrix; matrixCodeType:3x3;"
+  renderer="logarithmicDepthBuffer:true; precision:medium"
   vr-mode-ui="enabled:false"
   loading-screen="enabled:false">
 
@@ -54,154 +52,183 @@
     <a-asset-item id="cup-glb" src="assets/coffee_cup.glb"></a-asset-item>
   </a-assets>
 
-  <a-light type="ambient" color="#ffeedd" intensity="0.9"></a-light>
-  <a-light type="point" color="#ffcc99" intensity="1.2" position="0 3 0" distance="20"></a-light>
-
-  <a-entity id="rig">
-    <a-camera
-      id="cam"
-      look-controls="magicWindowTrackingEnabled:true; touchEnabled:false"
-      cursor="fuse:false; rayOrigin:mouse"
-      raycaster="objects:.clickable; far:30">
-    </a-camera>
-  </a-entity>
-
   <a-entity id="world"></a-entity>
+  <a-entity id="cam" camera></a-entity>
 </a-scene>
 
 <script>
-var DEFAULT_LAT = 55.7539, DEFAULT_LON = 37.6208;
-var userLat = DEFAULT_LAT, userLon = DEFAULT_LON;
+var LAT = 55.7539, LON = 37.6208;
 var coordEl = document.getElementById('coord-val');
-var scEl = document.getElementById('sc'), timerEl = document.getElementById('timer');
-var infoEl = document.getElementById('info'), resultEl = document.getElementById('result');
+var scEl = document.getElementById('sc');
+var timerEl = document.getElementById('timer');
+var infoEl = document.getElementById('info');
+var resultEl = document.getElementById('result');
 var world = document.getElementById('world');
-var score = 0, gameOn = false, timeLeft = 60, timerInt = null;
-var cupN = 0, studN = 0, spawnT = null, studT = null, _actx;
+var scene3d = document.getElementById('sc3d');
 
-/* Камера */
-navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' }})
-  .then(function(s){ document.getElementById('cam-bg').srcObject = s; })
-  .catch(function(){});
+var score = 0, timeLeft = 60, timerInt = null;
+var cupN = 0, studN = 0, spawnT = null, studT = null, _actx;
 
 /* GPS */
 if (navigator.geolocation) {
   navigator.geolocation.getCurrentPosition(
-    function(p){ userLat=p.coords.latitude; userLon=p.coords.longitude; coordEl.textContent=userLat.toFixed(4)+', '+userLon.toFixed(4); },
-    function(){ coordEl.textContent=DEFAULT_LAT.toFixed(4)+', '+DEFAULT_LON.toFixed(4)+' (демо)'; },
-    { enableHighAccuracy:true, timeout:8000 }
+    function(p) { LAT = p.coords.latitude; LON = p.coords.longitude; coordEl.textContent = LAT.toFixed(4) + ', ' + LON.toFixed(4); },
+    function() { coordEl.textContent = LAT.toFixed(4) + ', ' + LON.toFixed(4) + ' (демо)'; },
+    { enableHighAccuracy: true, timeout: 8000 }
   );
-} else { coordEl.textContent=DEFAULT_LAT.toFixed(4)+', '+DEFAULT_LON.toFixed(4)+' (демо)'; }
+} else {
+  coordEl.textContent = LAT.toFixed(4) + ', ' + LON.toFixed(4) + ' (демо)';
+}
 
 /* Звук */
-function ac(){ if(!_actx) _actx=new(window.AudioContext||window.webkitAudioContext)(); return _actx; }
-function beep(f,d,v){ try{ var c=ac(),o=c.createOscillator(),g=c.createGain(); o.connect(g);g.connect(c.destination); o.frequency.value=f;g.gain.setValueAtTime(v||.3,c.currentTime); g.gain.exponentialRampToValueAtTime(.001,c.currentTime+d); o.start();o.stop(c.currentTime+d); }catch(e){} }
-function sndOk(){ beep(523,.12,.4); setTimeout(function(){beep(659,.12,.4);},100); }
-function sndBad(){ beep(200,.25,.3); }
+function ac() { if (!_actx) _actx = new (window.AudioContext || window.webkitAudioContext)(); return _actx; }
+function beep(f, d) { try { var c = ac(), o = c.createOscillator(), g = c.createGain(); o.connect(g); g.connect(c.destination); o.frequency.value = f; g.gain.setValueAtTime(0.3, c.currentTime); g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + d); o.start(); o.stop(c.currentTime + d); } catch (e) {} }
+function sndOk() { beep(523, 0.12); setTimeout(function() { beep(659, 0.12); }, 100); }
+function sndBad() { beep(200, 0.25); }
 
-function addScore(n){ score=Math.max(0,score+n); scEl.textContent=score; }
-function showPts(t,g){ var d=document.createElement('div'); d.className='fps '+(g?'g':'b'); d.textContent=t; d.style.left=(38+Math.random()*24)+'%'; d.style.top='40%'; document.body.appendChild(d); setTimeout(function(){d.remove();},1100); }
-function baristaLvl(s){ return s>=80?'Barista Legend!':s>=50?'Barista Pro!':s>=25?'Barista Junior':'Стажёр'; }
+function addScore(n) { score = Math.max(0, score + n); scEl.textContent = score; }
 
-/* Случайная позиция вокруг игрока в 3D */
-function rndPos(){
-  var a = Math.random()*Math.PI*2;
-  var dist = 3 + Math.random()*4;
+function showPts(t, good) {
+  var d = document.createElement('div');
+  d.className = 'fps ' + (good ? 'g' : 'b');
+  d.textContent = t;
+  d.style.left = (30 + Math.random() * 40) + '%';
+  d.style.top = '40%';
+  document.body.appendChild(d);
+  setTimeout(function() { d.remove(); }, 1100);
+}
+
+/* Случайная позиция перед камерой */
+function rndPos() {
   return {
-    x: Math.sin(a)*dist,
-    y: 0.5 + Math.random()*2,
-    z: Math.cos(a)*dist
+    x: (Math.random() - 0.5) * 4,
+    y: 0.3 + Math.random() * 2.5,
+    z: -(2 + Math.random() * 3)
   };
 }
 
 /* Стаканчик */
-function makeCup(){
+function makeCup() {
   var p = rndPos();
   var el = document.createElement('a-entity');
-  el.setAttribute('class','clickable');
-  el.setAttribute('position', p.x+' '+p.y+' '+p.z);
-  el.setAttribute('scale','0.8 0.8 0.8');
+  el.setAttribute('class', 'clickable');
+  el.setAttribute('data-clickable', '');
+  el.setAttribute('position', p.x + ' ' + p.y + ' ' + p.z);
+  el.setAttribute('scale', '0.8 0.8 0.8');
 
-  var model = document.createElement('a-entity');
-  model.setAttribute('gltf-model','#cup-glb');
-  el.appendChild(model);
+  var m = document.createElement('a-entity');
+  m.setAttribute('gltf-model', '#cup-glb');
+  el.appendChild(m);
 
-  el.setAttribute('animation__spin','property:rotation; from:0 0 0; to:0 360 0; dur:2500; loop:true; easing:linear');
-  el.setAttribute('animation__bob','property:position.y; from:'+p.y+'; to:'+(p.y+0.3)+'; dur:1200; dir:alternate; loop:true; easing:easeInOutSine');
+  el.setAttribute('animation__spin', 'property:rotation; to:0 360 0; dur:2500; loop:true; easing:linear');
+  el.setAttribute('animation__bob', 'property:position.y; from:' + p.y + '; to:' + (p.y + 0.25) + '; dur:1200; dir:alternate; loop:true; easing:easeInOutSine');
 
-  var taken=false;
-  function onTap(e){ if(taken)return; e.stopPropagation(); taken=true; addScore(5); sndOk(); showPts('+5',true); infoEl.textContent='+5 | Очки: '+score; el.setAttribute('animation__col','property:scale; to:0 0 0; dur:200; easing:easeInBack'); setTimeout(function(){if(el.parentNode)el.remove();},220); }
-  el.addEventListener('click',onTap);
-  el.addEventListener('mouseenter',function(){el.setAttribute('scale','1 1 1');});
-  el.addEventListener('mouseleave',function(){el.setAttribute('scale','0.8 0.8 0.8');});
+  var taken = false;
+  el.addEventListener('click', function(e) {
+    if (taken) return;
+    taken = true;
+    addScore(5); sndOk(); showPts('+5', true);
+    infoEl.textContent = '+5 | Очки: ' + score;
+    el.setAttribute('animation__die', 'property:scale; to:0 0 0; dur:200');
+    setTimeout(function() { if (el.parentNode) el.remove(); }, 220);
+  });
 
   world.appendChild(el);
-  setTimeout(function(){if(!taken&&el.parentNode)el.remove();},6000);
+  setTimeout(function() { if (!taken && el.parentNode) el.remove(); }, 6000);
 }
 
 /* Однокурсник */
-function makeStud(){
+function makeStud() {
   var p = rndPos();
-  var cols=['#4a7c59','#3498DB','#9B59B6','#E74C3C'];
-  var col=cols[Math.floor(Math.random()*cols.length)];
+  var cols = ['#4a7c59', '#3498DB', '#9B59B6', '#E74C3C'];
+  var col = cols[Math.floor(Math.random() * cols.length)];
 
   var el = document.createElement('a-entity');
-  el.setAttribute('class','clickable');
-  el.setAttribute('position', p.x+' '+p.y+' '+p.z);
+  el.setAttribute('class', 'clickable');
+  el.setAttribute('data-clickable', '');
+  el.setAttribute('position', p.x + ' ' + p.y + ' ' + p.z);
 
-  var torso=document.createElement('a-entity');
-  torso.setAttribute('geometry','primitive:cylinder; radius:0.12; height:0.35');
-  torso.setAttribute('material','color:'+col);
-  torso.setAttribute('position','0 0.17 0');
+  var body = document.createElement('a-entity');
+  body.setAttribute('geometry', 'primitive:cylinder; radius:0.12; height:0.35');
+  body.setAttribute('material', 'color:' + col);
+  body.setAttribute('position', '0 0.17 0');
 
-  var head=document.createElement('a-entity');
-  head.setAttribute('geometry','primitive:sphere; radius:0.12');
-  head.setAttribute('material','color:#e8c4a0');
-  head.setAttribute('position','0 0.32 0');
-  head.setAttribute('animation','property:rotation; from:0 0 -5; to:0 0 5; dur:450; dir:alternate; loop:true');
-  torso.appendChild(head);
+  var head = document.createElement('a-entity');
+  head.setAttribute('geometry', 'primitive:sphere; radius:0.12');
+  head.setAttribute('material', 'color:#e8c4a0');
+  head.setAttribute('position', '0 0.32 0');
+  body.appendChild(head);
+  el.appendChild(body);
 
-  function mkLeg(px,fa,ta){
-    var l=document.createElement('a-entity');
-    l.setAttribute('geometry','primitive:box; width:0.08; height:0.3; depth:0.08');
-    l.setAttribute('material','color:#2C3E50');
-    l.setAttribute('position',px);
-    l.setAttribute('animation','property:rotation; from:'+fa+' 0 0; to:'+ta+' 0 0; dur:380; dir:alternate; loop:true');
-    return l;
-  }
-  torso.appendChild(mkLeg('-.06 -.25 0','-18','18'));
-  torso.appendChild(mkLeg('.06 -.25 0','18','-18'));
-  el.appendChild(torso);
+  el.setAttribute('animation__bob', 'property:position.y; from:' + p.y + '; to:' + (p.y + 0.15) + '; dur:1400; dir:alternate; loop:true; easing:easeInOutSine');
 
-  el.setAttribute('animation__bob','property:position.y; from:'+p.y+'; to:'+(p.y+0.2)+'; dur:1400; dir:alternate; loop:true; easing:easeInOutSine');
-
-  el.addEventListener('mouseenter',function(){torso.setAttribute('material','color:#FF4444');});
-  el.addEventListener('mouseleave',function(){torso.setAttribute('material','color:'+col);});
-
-  var hit=false;
-  function onHit(e){ if(hit)return; e.stopPropagation(); hit=true; addScore(-5); sndBad(); showPts('-5',false); infoEl.textContent='-5! Очки: '+score; el.setAttribute('animation__flash','property:scale; from:1.4 1.4 1.4; to:1 1 1; dur:260'); setTimeout(function(){if(el.parentNode)el.remove();},300); }
-  el.addEventListener('click',onHit);
+  var hit = false;
+  el.addEventListener('click', function(e) {
+    if (hit) return;
+    hit = true;
+    addScore(-5); sndBad(); showPts('-5', false);
+    infoEl.textContent = '-5! Очки: ' + score;
+    setTimeout(function() { if (el.parentNode) el.remove(); }, 300);
+  });
 
   world.appendChild(el);
-  setTimeout(function(){if(!hit&&el.parentNode)el.remove();},7000);
+  setTimeout(function() { if (!hit && el.parentNode) el.remove(); }, 7000);
 }
 
-function startSpawn(){ gameOn=true; makeCup(); spawnT=setInterval(makeCup,2200); studT=setInterval(makeStud,4200); }
-function stopSpawn(){ gameOn=false; clearInterval(spawnT); clearInterval(studT); }
-function startTimer(){
-  timeLeft=60; timerEl.textContent=timeLeft;
-  timerInt=setInterval(function(){ timeLeft--; timerEl.textContent=timeLeft; if(timeLeft<=0){clearInterval(timerInt); endGame();} },1000);
+/* Игра */
+function startSpawn() { makeCup(); spawnT = setInterval(makeCup, 2200); studT = setInterval(makeStud, 4200); }
+function stopSpawn() { clearInterval(spawnT); clearInterval(studT); }
+function startTimer() {
+  timeLeft = 60; timerEl.textContent = 60;
+  timerInt = setInterval(function() {
+    timeLeft--;
+    timerEl.textContent = timeLeft;
+    if (timeLeft <= 0) { clearInterval(timerInt); stopSpawn(); document.getElementById('final-score').textContent = score; document.getElementById('level').textContent = (score >= 80 ? 'Barista Legend!' : score >= 50 ? 'Barista Pro!' : score >= 25 ? 'Barista Junior' : 'Стажёр'); resultEl.classList.add('show'); }
+  }, 1000);
 }
-function endGame(){ stopSpawn(); document.getElementById('final-score').textContent=score; document.getElementById('level').textContent=baristaLvl(score); resultEl.classList.add('show'); }
 
-document.getElementById('btn-again').addEventListener('click',function(){
-  resultEl.classList.remove('show'); score=0; scEl.textContent='0'; gameOn=false;
-  timeLeft=60; timerEl.textContent='60'; if(timerInt)clearInterval(timerInt);
-  [].slice.call(world.querySelectorAll('.clickable')).forEach(function(el){el.remove();});
+document.getElementById('btn-again').addEventListener('click', function() {
+  resultEl.classList.remove('show');
+  score = 0; scEl.textContent = '0'; timeLeft = 60; timerEl.textContent = '60';
+  if (timerInt) clearInterval(timerInt);
+  [].slice.call(world.children).forEach(function(c) { c.remove(); });
   startSpawn(); startTimer();
 });
 
-document.getElementById('scene').addEventListener('loaded',function(){ startSpawn(); startTimer(); });
+/* Ручной тап-raycaster */
+scene3d.addEventListener('loaded', function() {
+  var canvas = scene3d.canvas;
+  if (!canvas) return;
+  var mouse = new THREE.Vector2();
+  var ray = new THREE.Raycaster();
+
+  function onTap(evt) {
+    var cx = evt.clientX != null ? evt.clientX : (evt.touches && evt.touches[0] ? evt.touches[0].clientX : 0);
+    var cy = evt.clientY != null ? evt.clientY : (evt.touches && evt.touches[0] ? evt.touches[0].clientY : 0);
+    var r = canvas.getBoundingClientRect();
+    mouse.x = (cx - r.left) / r.width * 2 - 1;
+    mouse.y = -(cy - r.top) / r.height * 2 + 1;
+    var cam = document.getElementById('cam');
+    if (!cam || !cam.components || !cam.components.camera) return;
+    ray.setFromCamera(mouse, cam.components.camera.camera);
+    var hits = ray.intersectObject(scene3d.object3D, true);
+    for (var i = 0; i < hits.length; i++) {
+      var obj = hits[i].object;
+      while (obj) {
+        if (obj.el && obj.el.classList && obj.el.classList.contains('clickable')) {
+          obj.el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+          return;
+        }
+        obj = obj.parent;
+      }
+    }
+  }
+  canvas.addEventListener('click', onTap, false);
+  canvas.addEventListener('touchstart', function(e) { e.preventDefault(); onTap(e); }, { passive: false });
+
+  startSpawn();
+  startTimer();
+});
 </script>
 </body>
 </html>
