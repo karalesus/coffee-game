@@ -63,8 +63,7 @@
     <a-asset-item id="student-glb" src="assets/student.glb"></a-asset-item>
   </a-assets>
 
-  <a-entity id="world"></a-entity>
-  <a-camera gps-camera rotation-reader></a-camera>
+  <a-camera id="gps-cam" gps-camera rotation-reader></a-camera>
 </a-scene>
 
 <script>
@@ -74,7 +73,7 @@ var infoEl  = document.getElementById('info');
 var coordEl = document.getElementById('coord-val');
 var resultEl= document.getElementById('result');
 var gpsWait = document.getElementById('gps-wait');
-var world   = document.getElementById('world');
+var sceneEl = document.querySelector('a-scene');
 
 var score=0, timeLeft=30, timerInt=null;
 var cupN=0, studN=0, spawnT=null, studT=null, _actx;
@@ -103,7 +102,6 @@ function makeCup(){
   var lon = userLon + o.lon;
 
   var el = document.createElement('a-entity');
-  el.setAttribute('gps-entity-place', 'latitude: '+lat+'; longitude: '+lon+';');
   el.setAttribute('look-at', '[gps-camera]');
   el.setAttribute('scale', '8 8 8');
   el.setAttribute('class', 'clickable');
@@ -123,7 +121,11 @@ function makeCup(){
     setTimeout(function(){if(el.parentNode)el.remove();},320);
   });
 
-  world.appendChild(el);
+  sceneEl.appendChild(el);
+  el.setAttribute('gps-entity-place', 'latitude: '+lat+'; longitude: '+lon+';');
+  if(el.components['gps-entity-place'] && el.components['gps-entity-place']._updatePosition) {
+    el.components['gps-entity-place']._updatePosition();
+  }
   setTimeout(function(){if(!taken&&el.parentNode)el.remove();},10000);
 }
 
@@ -134,7 +136,6 @@ function makeStud(){
   var lon = userLon + o.lon;
 
   var el = document.createElement('a-entity');
-  el.setAttribute('gps-entity-place', 'latitude: '+lat+'; longitude: '+lon+';');
   el.setAttribute('look-at', '[gps-camera]');
   el.setAttribute('scale', '5 5 5');
   el.setAttribute('class', 'clickable');
@@ -151,7 +152,11 @@ function makeStud(){
     setTimeout(function(){if(el.parentNode)el.remove();},400);
   });
 
-  world.appendChild(el);
+  sceneEl.appendChild(el);
+  el.setAttribute('gps-entity-place', 'latitude: '+lat+'; longitude: '+lon+';');
+  if(el.components['gps-entity-place'] && el.components['gps-entity-place']._updatePosition) {
+    el.components['gps-entity-place']._updatePosition();
+  }
   setTimeout(function(){if(!hit&&el.parentNode)el.remove();},12000);
 }
 
@@ -184,7 +189,10 @@ document.getElementById('btn-again').addEventListener('click',function(){
   score=0; scEl.textContent='0'; gameStarted=false;
   timeLeft=30; timerEl.textContent='30';
   if(timerInt)clearInterval(timerInt);
-  [].slice.call(world.children).forEach(function(c){c.remove();});
+  if(sceneEl){
+    var list = sceneEl.querySelectorAll('a-entity[gps-entity-place]');
+    for(var i=0;i<list.length;i++) list[i].remove();
+  }
   startGame();
 });
 
@@ -201,6 +209,10 @@ function setCoords(lat, lon, demo){
 function useFallback(){
   if(gameStarted) return;
   infoEl.textContent = 'GPS недоступен — используем демо-координаты (Москва).';
+  var cam = document.getElementById('gps-cam');
+  if(cam && cam.components['gps-camera']){
+    cam.setAttribute('gps-camera', 'simulateLatitude: '+DEFAULT_LAT+'; simulateLongitude: '+DEFAULT_LON+';');
+  }
   setCoords(DEFAULT_LAT, DEFAULT_LON, true);
 }
 
