@@ -85,44 +85,6 @@
 </head>
 <body>
 
-<div id="start-screen">
-  <h1>Кофейня</h1>
-  <p>Собирай стаканчики с кофе!</p>
-  <div class="hint-grid">
-    <div class="hint-card"><span><b>+5</b> за стаканчик</span></div>
-    <div class="hint-card"><span>60 секунд на смену</span></div>
-  </div>
-  <div>
-    <button class="btn" id="btn-start">Начать игру</button>
-    <button class="btn btn-ar" onclick="window.open('ar.html','_blank')">AR маркер</button>
-    <button class="btn btn-ar" onclick="window.open('ar-gps.html','_blank')">AR GPS</button>
-  </div>
-</div>
-
-<div id="ui-overlay">
-  <div id="top-bar">
-    <span id="score">Очки: <span>0</span></span>
-    <span id="combo-display"></span>
-    <span id="timer">Время: <span>60</span> с</span>
-  </div>
-</div>
-
-<div id="final-screen">
-  <h1>Смена окончена!</h1>
-  <div class="big-score" id="final-score">0</div>
-  <div class="level" id="barista-level">—</div>
-  <div class="stats-row">
-    <div class="stat-box"><div class="stat-num" id="stat-caught">0</div><div class="stat-lbl">ПОЙМАНО</div></div>
-    <div class="stat-box"><div class="stat-num" id="stat-miss">0</div><div class="stat-lbl">ПРОМАХОВ</div></div>
-    <div class="stat-box"><div class="stat-num" id="stat-combo">0</div><div class="stat-lbl">МАКС. КОМБО</div></div>
-  </div>
-  <div>
-    <button class="btn" id="btn-restart">Ещё смену!</button>
-    <button class="btn btn-ar" onclick="window.open('ar.html','_blank')">AR маркер</button>
-    <button class="btn btn-ar" onclick="window.open('ar-gps.html','_blank')">AR GPS</button>
-  </div>
-</div>
-
 <a-scene id="scene"
   cursor="rayOrigin: mouse; fuse: false"
   raycaster="objects: [data-clickable]; far: 25"
@@ -196,6 +158,44 @@
   <a-entity id="game-objects"></a-entity>
 
 </a-scene>
+
+<div id="start-screen">
+  <h1>Кофейня</h1>
+  <p>Собирай стаканчики с кофе!</p>
+  <div class="hint-grid">
+    <div class="hint-card"><span><b>+5</b> за стаканчик</span></div>
+    <div class="hint-card"><span>60 секунд на смену</span></div>
+  </div>
+  <div>
+    <button class="btn" id="btn-start">Начать игру</button>
+    <button class="btn btn-ar" onclick="window.open('ar.html','_blank')">AR маркер</button>
+    <button class="btn btn-ar" onclick="window.open('ar-gps.html','_blank')">AR GPS</button>
+  </div>
+</div>
+
+<div id="ui-overlay">
+  <div id="top-bar">
+    <span id="score">Очки: <span>0</span></span>
+    <span id="combo-display"></span>
+    <span id="timer">Время: <span>60</span> с</span>
+  </div>
+</div>
+
+<div id="final-screen">
+  <h1>Смена окончена!</h1>
+  <div class="big-score" id="final-score">0</div>
+  <div class="level" id="barista-level">—</div>
+  <div class="stats-row">
+    <div class="stat-box"><div class="stat-num" id="stat-caught">0</div><div class="stat-lbl">ПОЙМАНО</div></div>
+    <div class="stat-box"><div class="stat-num" id="stat-miss">0</div><div class="stat-lbl">ПРОМАХОВ</div></div>
+    <div class="stat-box"><div class="stat-num" id="stat-combo">0</div><div class="stat-lbl">МАКС. КОМБО</div></div>
+  </div>
+  <div>
+    <button class="btn" id="btn-restart">Ещё смену!</button>
+    <button class="btn btn-ar" onclick="window.open('ar.html','_blank')">AR маркер</button>
+    <button class="btn btn-ar" onclick="window.open('ar-gps.html','_blank')">AR GPS</button>
+  </div>
+</div>
 
 <script>
 var GAME_DURATION = 60;
