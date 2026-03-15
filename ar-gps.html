@@ -190,8 +190,7 @@ function makeCup() {
   el.setAttribute('id', id);
   el.setAttribute('class', 'clickable');
   el.setAttribute('data-clickable', '');
-  el.setAttribute('gps-new-entity-place', 'latitude: ' + lat + '; longitude: ' + lon);
-
+  el.setAttribute('position', '0 1 0');
   el.setAttribute('geometry', 'primitive:cylinder; radiusTop:0.08; radiusBottom:0.065; height:0.2; segmentsRadial:8');
   el.setAttribute('material', 'opacity:0; transparent:true; side:double');
 
@@ -214,6 +213,7 @@ function makeCup() {
   el.addEventListener('touchstart', onTap, { passive: false });
 
   arscene.appendChild(el);
+  el.setAttribute('gps-new-entity-place', { latitude: lat, longitude: lon });
   setTimeout(function() { if (!taken && el.parentNode) el.remove(); }, 5000);
 }
 
@@ -230,8 +230,7 @@ function makeStud() {
   el.setAttribute('id', id);
   el.setAttribute('class', 'clickable');
   el.setAttribute('data-clickable', '');
-  el.setAttribute('gps-new-entity-place', 'latitude: ' + lat + '; longitude: ' + lon);
-
+  el.setAttribute('position', '0 1 0');
   el.setAttribute('geometry', 'primitive:box; width:0.25; height:0.55; depth:0.25');
   el.setAttribute('material', 'color:' + col);
 
@@ -249,6 +248,7 @@ function makeStud() {
   el.addEventListener('touchstart', onHit, { passive: false });
 
   arscene.appendChild(el);
+  el.setAttribute('gps-new-entity-place', { latitude: lat, longitude: lon });
   setTimeout(function() { if (!hit && el.parentNode) el.remove(); }, 6000);
 }
 
@@ -294,8 +294,12 @@ function showGpsFallback() {
   gpsFallbackShown = true;
   userLat = DEFAULT_LAT;
   userLon = DEFAULT_LON;
+  var cam = document.querySelector('[gps-new-camera]');
+  if (cam) {
+    cam.setAttribute('gps-new-camera', 'gpsMinDistance: 2; simulateLatitude: ' + DEFAULT_LAT + '; simulateLongitude: ' + DEFAULT_LON);
+  }
   gpsHint.style.display = 'none';
-  infoEl.textContent = 'GPS недоступен. Используем демо-координаты (Москва, Красная площадь).';
+  infoEl.textContent = 'GPS недоступен. Демо: объекты вокруг Красной площади.';
   gameStarted = true;
   startSpawn();
   startTimer();
@@ -313,8 +317,10 @@ function bindGpsListener() {
       gameStarted = true;
       gpsHint.style.display = 'none';
       infoEl.textContent = 'Тапай стаканчики (+5), не трогай студентов (−5). 60 сек.';
-      startSpawn();
-      startTimer();
+      setTimeout(function() {
+        startSpawn();
+        startTimer();
+      }, 300);
     }
   });
   // Если AR.js сообщает об ошибке GPS — показываем подсказку
