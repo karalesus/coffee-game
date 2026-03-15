@@ -4,20 +4,23 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
   <title>Кофейня AR (GPS)</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/aframe/build/aframe-ar.js"></script>
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <script src="https://unpkg.com/aframe-look-at-component@1.0.0/dist/aframe-look-at-component.min.js"></script>
+  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     body{overflow:hidden;font-family:'Segoe UI',sans-serif;touch-action:none}
-    #btns{position:fixed;top:12px;left:0;right:0;z-index:99;display:flex;justify-content:center;gap:8px;padding:0 12px;pointer-events:auto}
+    #ui{position:fixed;top:0;left:0;right:0;z-index:999;pointer-events:none}
+    #btns{display:flex;justify-content:center;gap:8px;padding:12px;pointer-events:auto}
     .abtn{background:rgba(0,0,0,.8);color:#fff;border:2px solid rgba(255,200,80,.5);padding:10px 16px;border-radius:10px;font-size:13px;cursor:pointer;text-decoration:none;font-weight:bold}
-    #hud{position:fixed;top:62px;left:50%;transform:translateX(-50%);z-index:99;pointer-events:none;background:rgba(60,30,0,.88);border:2px solid rgba(255,200,80,.4);border-radius:14px;padding:8px 26px;color:#FFD700;font-size:1.4em;font-weight:bold}
-    #coords{position:fixed;top:110px;left:50%;transform:translateX(-50%);z-index:99;pointer-events:none;font-size:12px;color:#fff;background:rgba(0,0,0,.6);padding:4px 10px;border-radius:6px}
-    #info{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:99;pointer-events:none;background:rgba(0,0,0,.78);color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;max-width:92%;text-align:center}
-    .fps{position:fixed;font-size:30px;font-weight:bold;pointer-events:none;z-index:99;animation:fup 1s ease-out forwards}
+    #hud{text-align:center;background:rgba(60,30,0,.88);border:2px solid rgba(255,200,80,.4);border-radius:14px;padding:8px 26px;color:#FFD700;font-size:1.4em;font-weight:bold;display:inline-block;margin:0 auto;display:flex;justify-content:center}
+    #coords{text-align:center;font-size:12px;color:#fff;background:rgba(0,0,0,.6);padding:4px 10px;border-radius:6px;margin-top:4px;display:flex;justify-content:center}
+    #info{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:999;pointer-events:none;background:rgba(0,0,0,.78);color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;max-width:92%;text-align:center}
+    #gps-wait{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:999;background:rgba(0,0,0,.85);color:#fff;padding:24px 32px;border-radius:14px;text-align:center;font-size:15px}
+    .fps{position:fixed;font-size:30px;font-weight:bold;pointer-events:none;z-index:999;animation:fup 1s ease-out forwards}
     .fps.g{color:#FFD700;text-shadow:0 0 12px gold}.fps.b{color:#FF4444}
     @keyframes fup{0%{opacity:1;transform:translateY(0) scale(1.2)}100%{opacity:0;transform:translateY(-70px) scale(.8)}}
-    #result{display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.85);justify-content:center;align-items:center;flex-direction:column;color:#FFD700;text-align:center;padding:20px}
+    #result{display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.85);justify-content:center;align-items:center;flex-direction:column;color:#FFD700;text-align:center;padding:20px}
     #result.show{display:flex}
     #result h2{font-size:1.8em;margin-bottom:12px}
     #result .again{margin-top:20px;padding:12px 24px;font-size:16px;cursor:pointer;border-radius:10px;background:rgba(255,200,80,.3);border:2px solid #FFD700;color:#fff}
@@ -25,13 +28,23 @@
 </head>
 <body>
 
-<div id="btns">
-  <a class="abtn" href="index.html">← Игра</a>
-  <a class="abtn" href="ar.html">AR маркер</a>
+<div id="ui">
+  <div id="btns">
+    <a class="abtn" href="index.html">← Игра</a>
+    <a class="abtn" href="ar.html">AR маркер</a>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:0 12px 8px">
+    <div id="hud">Очки: <span id="sc">0</span> | <span id="timer">60</span> с</div>
+    <div id="coords">GPS: <span id="coord-val">определяем...</span></div>
+  </div>
 </div>
-<div id="hud">Очки: <span id="sc">0</span> | <span id="timer">60</span> с</div>
-<div id="coords">GPS: <span id="coord-val">определяем...</span></div>
-<div id="info">Тапай стаканчики (+5), не трогай студентов (−5). 60 сек.</div>
+
+<div id="info">Поверни телефон — ищи стаканчики вокруг! Тапай (+5), не трогай студентов (−5).</div>
+
+<div id="gps-wait">
+  <div style="font-size:24px;margin-bottom:12px">Получение GPS...</div>
+  <div style="font-size:13px;opacity:0.8">Разреши доступ к геолокации.<br>Выйди на улицу для лучшего сигнала.</div>
+</div>
 
 <div id="result">
   <h2>Время вышло!</h2>
@@ -41,214 +54,207 @@
 </div>
 
 <a-scene
-  id="ascene"
-  embedded
-  arjs="sourceType:webcam; debugUIEnabled:false;"
-  vr-mode-ui="enabled:false"
-  loading-screen="enabled:false"
-  renderer="logarithmicDepthBuffer:true; precision:medium;">
+  vr-mode-ui="enabled: false"
+  arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;"
+  loading-screen="enabled: false">
 
-  <a-assets timeout="10000">
+  <a-assets timeout="15000">
     <a-asset-item id="cup-glb" src="assets/coffee_cup.glb"></a-asset-item>
+    <a-asset-item id="student-glb" src="assets/student.glb"></a-asset-item>
   </a-assets>
 
-  <a-light type="ambient" color="#ffeedd" intensity="0.8"></a-light>
-  <a-light type="point" color="#fff" intensity="1" position="0 4 -3" distance="20"></a-light>
-
   <a-entity id="world"></a-entity>
-  <a-entity id="cam" camera></a-entity>
+  <a-camera gps-camera rotation-reader></a-camera>
 </a-scene>
 
 <script>
-var LAT = 55.7539, LON = 37.6208;
-var coordEl = document.getElementById('coord-val');
-var scEl = document.getElementById('sc');
+var scEl    = document.getElementById('sc');
 var timerEl = document.getElementById('timer');
-var infoEl = document.getElementById('info');
-var resultEl = document.getElementById('result');
-var ascene = document.getElementById('ascene');
-var camEl = null;
+var infoEl  = document.getElementById('info');
+var coordEl = document.getElementById('coord-val');
+var resultEl= document.getElementById('result');
+var gpsWait = document.getElementById('gps-wait');
+var world   = document.getElementById('world');
 
-var score = 0, timeLeft = 60, timerInt = null;
-var cupN = 0, studN = 0, spawnT = null, studT = null, _actx;
+var score=0, timeLeft=60, timerInt=null;
+var cupN=0, studN=0, spawnT=null, studT=null, _actx;
+var userLat=null, userLon=null, gameStarted=false;
 
-/* GPS */
-if (navigator.geolocation) {
-  navigator.geolocation.getCurrentPosition(
-    function(p) { LAT = p.coords.latitude; LON = p.coords.longitude; coordEl.textContent = LAT.toFixed(4) + ', ' + LON.toFixed(4); },
-    function() { coordEl.textContent = LAT.toFixed(4) + ', ' + LON.toFixed(4) + ' (демо)'; },
-    { enableHighAccuracy: true, timeout: 8000 }
-  );
-} else {
-  coordEl.textContent = LAT.toFixed(4) + ', ' + LON.toFixed(4) + ' (демо)';
+/* ── Звук ── */
+function ac(){ if(!_actx)_actx=new(window.AudioContext||window.webkitAudioContext)(); return _actx; }
+function beep(f,d){ try{ var c=ac(),o=c.createOscillator(),g=c.createGain(); o.connect(g);g.connect(c.destination); o.frequency.value=f;g.gain.setValueAtTime(0.3,c.currentTime);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+d);o.start();o.stop(c.currentTime+d); }catch(e){} }
+function sndOk(){ beep(523,0.12); setTimeout(function(){beep(659,0.12);},100); }
+function sndBad(){ beep(200,0.25); }
+
+function addScore(n){ score=Math.max(0,score+n); scEl.textContent=score; }
+function showPts(t,g){ var d=document.createElement('div'); d.className='fps '+(g?'g':'b'); d.textContent=t; d.style.left=(30+Math.random()*40)+'%'; d.style.top='40%'; document.body.appendChild(d); setTimeout(function(){d.remove();},1100); }
+function lvl(s){ return s>=80?'Barista Legend!':s>=50?'Barista Pro!':s>=25?'Barista Junior':'Стажёр'; }
+
+/* ── Случайный сдвиг координат (2–8 метров) ── */
+/* 1° широты ≈ 111 000 м → 0.00001° ≈ 1.1 м */
+function rndOffset(){
+  var dist = (2 + Math.random()*6) / 111000; // 2–8 метров в градусах
+  var angle = Math.random() * Math.PI * 2;
+  return { lat: Math.cos(angle)*dist, lon: Math.sin(angle)*dist };
 }
 
-/* Звук */
-function ac() { if (!_actx) _actx = new (window.AudioContext || window.webkitAudioContext)(); return _actx; }
-function beep(f, d) { try { var c = ac(), o = c.createOscillator(), g = c.createGain(); o.connect(g); g.connect(c.destination); o.frequency.value = f; g.gain.setValueAtTime(0.3, c.currentTime); g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + d); o.start(); o.stop(c.currentTime + d); } catch (e) {} }
-function sndOk() { beep(523, 0.12); setTimeout(function() { beep(659, 0.12); }, 100); }
-function sndBad() { beep(200, 0.25); }
+/* ── Стаканчик ── */
+function makeCup(){
+  if(!userLat) return;
+  var o = rndOffset();
+  var lat = userLat + o.lat;
+  var lon = userLon + o.lon;
 
-function addScore(n) { score = Math.max(0, score + n); scEl.textContent = score; }
-
-function showPts(t, good) {
-  var d = document.createElement('div');
-  d.className = 'fps ' + (good ? 'g' : 'b');
-  d.textContent = t;
-  d.style.left = (30 + Math.random() * 40) + '%';
-  d.style.top = '40%';
-  document.body.appendChild(d);
-  setTimeout(function() { d.remove(); }, 1100);
-}
-
-/* Позиция перед AR-камерой */
-function rndPos() {
-  var cam = document.querySelector('[camera]');
-  var cx = 0, cy = 0, cz = 0;
-  if (cam && cam.object3D) {
-    var wp = new THREE.Vector3();
-    cam.object3D.getWorldPosition(wp);
-    cx = wp.x; cy = wp.y; cz = wp.z;
-  }
-  return {
-    x: cx + (Math.random() - 0.5) * 4,
-    y: cy + 0.3 + Math.random() * 2,
-    z: cz - (2 + Math.random() * 4)
-  };
-}
-
-/* Стаканчик */
-function makeCup() {
-  var p = rndPos();
   var el = document.createElement('a-entity');
+  el.setAttribute('gps-entity-place', 'latitude: '+lat+'; longitude: '+lon+';');
+  el.setAttribute('look-at', '[gps-camera]');
+  el.setAttribute('position', '0 1.5 0'); // высота ~на уровне глаз
+  el.setAttribute('scale', '3 3 3');
   el.setAttribute('class', 'clickable');
-  el.setAttribute('data-clickable', '');
-  el.setAttribute('position', p.x + ' ' + p.y + ' ' + p.z);
-  el.setAttribute('scale', '0.6 0.6 0.6');
 
   var m = document.createElement('a-entity');
   m.setAttribute('gltf-model', '#cup-glb');
   el.appendChild(m);
 
   el.setAttribute('animation__spin', 'property:rotation; to:0 360 0; dur:2500; loop:true; easing:linear');
-  el.setAttribute('animation__bob', 'property:position.y; from:' + p.y + '; to:' + (p.y + 0.2) + '; dur:1200; dir:alternate; loop:true; easing:easeInOutSine');
+  el.setAttribute('animation__bob', 'property:position.y; from:1.5; to:1.8; dur:1200; dir:alternate; loop:true; easing:easeInOutSine');
 
-  var taken = false;
-  el.addEventListener('click', function() {
-    if (taken) return;
-    taken = true;
-    addScore(5); sndOk(); showPts('+5', true);
-    infoEl.textContent = '+5 | Очки: ' + score;
-    el.setAttribute('animation__die', 'property:scale; to:0 0 0; dur:200');
-    setTimeout(function() { if (el.parentNode) el.remove(); }, 220);
+  var taken=false;
+  el.addEventListener('click', function(){
+    if(taken)return; taken=true;
+    addScore(5); sndOk(); showPts('+5',true);
+    infoEl.textContent='+5 | Очки: '+score;
+    el.setAttribute('animation__die','property:scale; to:0 0 0; dur:300');
+    setTimeout(function(){if(el.parentNode)el.remove();},320);
   });
 
-  document.getElementById('world').appendChild(el);
-  setTimeout(function() { if (!taken && el.parentNode) el.remove(); }, 6000);
+  world.appendChild(el);
+  setTimeout(function(){if(!taken&&el.parentNode)el.remove();},10000);
 }
 
-/* Однокурсник */
-function makeStud() {
-  var p = rndPos();
-  var cols = ['#4a7c59', '#3498DB', '#9B59B6', '#E74C3C'];
-  var col = cols[Math.floor(Math.random() * cols.length)];
+/* ── Студент ── */
+function makeStud(){
+  if(!userLat) return;
+  var o = rndOffset();
+  var lat = userLat + o.lat;
+  var lon = userLon + o.lon;
 
   var el = document.createElement('a-entity');
+  el.setAttribute('gps-entity-place', 'latitude: '+lat+'; longitude: '+lon+';');
+  el.setAttribute('look-at', '[gps-camera]');
+  el.setAttribute('position', '0 0 0');
+  el.setAttribute('scale', '3 3 3');
   el.setAttribute('class', 'clickable');
-  el.setAttribute('data-clickable', '');
-  el.setAttribute('position', p.x + ' ' + p.y + ' ' + p.z);
 
-  var body = document.createElement('a-entity');
-  body.setAttribute('geometry', 'primitive:cylinder; radius:0.12; height:0.35');
-  body.setAttribute('material', 'color:' + col);
-  body.setAttribute('position', '0 0.17 0');
+  var m = document.createElement('a-entity');
+  m.setAttribute('gltf-model', '#student-glb');
+  el.appendChild(m);
 
-  var head = document.createElement('a-entity');
-  head.setAttribute('geometry', 'primitive:sphere; radius:0.12');
-  head.setAttribute('material', 'color:#e8c4a0');
-  head.setAttribute('position', '0 0.32 0');
-  body.appendChild(head);
-  el.appendChild(body);
-
-  el.setAttribute('animation__bob', 'property:position.y; from:' + p.y + '; to:' + (p.y + 0.15) + '; dur:1400; dir:alternate; loop:true; easing:easeInOutSine');
-
-  var hit = false;
-  el.addEventListener('click', function() {
-    if (hit) return;
-    hit = true;
-    addScore(-5); sndBad(); showPts('-5', false);
-    infoEl.textContent = '-5! Очки: ' + score;
-    setTimeout(function() { if (el.parentNode) el.remove(); }, 300);
+  var hit=false;
+  el.addEventListener('click', function(){
+    if(hit)return; hit=true;
+    addScore(-5); sndBad(); showPts('-5',false);
+    infoEl.textContent='-5! Очки: '+score;
+    setTimeout(function(){if(el.parentNode)el.remove();},400);
   });
 
-  document.getElementById('world').appendChild(el);
-  setTimeout(function() { if (!hit && el.parentNode) el.remove(); }, 7000);
+  world.appendChild(el);
+  setTimeout(function(){if(!hit&&el.parentNode)el.remove();},12000);
 }
 
-function startSpawn() { makeCup(); spawnT = setInterval(makeCup, 2200); studT = setInterval(makeStud, 4200); }
-function stopSpawn() { clearInterval(spawnT); clearInterval(studT); }
-function startTimer() {
-  timeLeft = 60; timerEl.textContent = 60;
-  timerInt = setInterval(function() {
-    timeLeft--;
-    timerEl.textContent = timeLeft;
-    if (timeLeft <= 0) {
-      clearInterval(timerInt); stopSpawn();
-      document.getElementById('final-score').textContent = score;
-      document.getElementById('level').textContent = (score >= 80 ? 'Barista Legend!' : score >= 50 ? 'Barista Pro!' : score >= 25 ? 'Barista Junior' : 'Стажёр');
+/* ── Спавн / таймер ── */
+function startGame(){
+  if(gameStarted) return;
+  gameStarted = true;
+  gpsWait.style.display = 'none';
+  infoEl.textContent = 'Поверни телефон — ищи стаканчики вокруг! Тапай (+5), не трогай студентов (−5).';
+
+  makeCup();
+  spawnT = setInterval(makeCup, 3000);
+  studT  = setInterval(makeStud, 5000);
+
+  timeLeft=60; timerEl.textContent=60;
+  timerInt = setInterval(function(){
+    timerEl.textContent=--timeLeft;
+    if(timeLeft<=0){
+      clearInterval(timerInt);
+      clearInterval(spawnT);
+      clearInterval(studT);
+      document.getElementById('final-score').textContent=score;
+      document.getElementById('level').textContent=lvl(score);
       resultEl.classList.add('show');
     }
-  }, 1000);
+  },1000);
 }
 
-document.getElementById('btn-again').addEventListener('click', function() {
+document.getElementById('btn-again').addEventListener('click',function(){
   resultEl.classList.remove('show');
-  score = 0; scEl.textContent = '0';
-  timeLeft = 60; timerEl.textContent = '60';
-  if (timerInt) clearInterval(timerInt);
-  [].slice.call(document.getElementById('world').querySelectorAll('.clickable')).forEach(function(c) { c.remove(); });
-  startSpawn(); startTimer();
+  score=0; scEl.textContent='0'; gameStarted=false;
+  timeLeft=60; timerEl.textContent='60';
+  if(timerInt)clearInterval(timerInt);
+  [].slice.call(world.children).forEach(function(c){c.remove();});
+  startGame();
 });
 
-/* Тап */
-function setupTap() {
-  var canvas = ascene.canvas;
-  if (!canvas) { setTimeout(setupTap, 300); return; }
-  var mouse = new THREE.Vector2();
-  var ray = new THREE.Raycaster();
+var DEFAULT_LAT = 55.7539;
+var DEFAULT_LON = 37.6208;
 
-  function onTap(evt) {
-    var cx = evt.clientX != null ? evt.clientX : (evt.touches && evt.touches[0] ? evt.touches[0].clientX : 0);
-    var cy = evt.clientY != null ? evt.clientY : (evt.touches && evt.touches[0] ? evt.touches[0].clientY : 0);
+function setCoords(lat, lon, demo){
+  userLat = lat;
+  userLon = lon;
+  coordEl.textContent = lat.toFixed(5)+', '+lon.toFixed(5) + (demo ? ' (демо)' : '');
+  if(!gameStarted) startGame();
+}
+
+function useFallback(){
+  if(gameStarted) return;
+  infoEl.textContent = 'GPS недоступен — используем демо-координаты (Москва).';
+  setCoords(DEFAULT_LAT, DEFAULT_LON, true);
+}
+
+/* GPS через AR.js камеру */
+window.addEventListener('gps-camera-update-position', function(e){
+  setCoords(e.detail.position.latitude, e.detail.position.longitude, false);
+});
+
+/* Резервный вариант: нативный GPS */
+if(navigator.geolocation){
+  navigator.geolocation.watchPosition(
+    function(pos){ setCoords(pos.coords.latitude, pos.coords.longitude, false); },
+    function(){ useFallback(); },
+    {enableHighAccuracy:true, timeout:10000}
+  );
+} else {
+  useFallback();
+}
+
+/* Если через 12 секунд GPS не пришёл — фолбэк */
+setTimeout(function(){ if(!gameStarted) useFallback(); }, 12000);
+
+/* Тап по объекту */
+document.querySelector('a-scene').addEventListener('loaded', function(){
+  var canvas = this.canvas;
+  var ray = new THREE.Raycaster();
+  var mouse = new THREE.Vector2();
+  var scene3d = this.object3D;
+
+  function onTap(evt){
+    var cx = evt.clientX!=null?evt.clientX:(evt.touches&&evt.touches[0]?evt.touches[0].clientX:0);
+    var cy = evt.clientY!=null?evt.clientY:(evt.touches&&evt.touches[0]?evt.touches[0].clientY:0);
     var r = canvas.getBoundingClientRect();
-    mouse.x = (cx - r.left) / r.width * 2 - 1;
-    mouse.y = -(cy - r.top) / r.height * 2 + 1;
-    var c = document.querySelector('[camera]');
-    if (!c || !c.components || !c.components.camera) return;
-    ray.setFromCamera(mouse, c.components.camera.camera);
-    var hits = ray.intersectObject(ascene.object3D, true);
-    for (var i = 0; i < hits.length; i++) {
-      var obj = hits[i].object;
-      while (obj) {
-        if (obj.el && obj.el.classList && obj.el.classList.contains('clickable')) {
-          obj.el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-          return;
-        }
-        obj = obj.parent;
-      }
+    mouse.x = (cx-r.left)/r.width*2-1;
+    mouse.y = -(cy-r.top)/r.height*2+1;
+    var cam = document.querySelector('[camera]');
+    if(!cam||!cam.components||!cam.components.camera) return;
+    ray.setFromCamera(mouse, cam.components.camera.camera);
+    var hits = ray.intersectObject(scene3d, true);
+    for(var i=0;i<hits.length;i++){
+      var obj=hits[i].object;
+      while(obj){ if(obj.el&&obj.el.classList&&obj.el.classList.contains('clickable')){ obj.el.dispatchEvent(new MouseEvent('click',{bubbles:true})); return; } obj=obj.parent; }
     }
   }
   canvas.addEventListener('click', onTap, false);
-  canvas.addEventListener('touchstart', function(e) { e.preventDefault(); onTap(e); }, { passive: false });
-}
-
-/* Старт — ждём пока рендерер и камера готовы */
-ascene.addEventListener('renderstart', function() {
-  setupTap();
-  setTimeout(function() {
-    startSpawn();
-    startTimer();
-  }, 500);
+  canvas.addEventListener('touchstart', function(e){e.preventDefault();onTap(e);},{passive:false});
 });
 </script>
 </body>

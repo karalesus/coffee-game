@@ -89,6 +89,7 @@
   <a-assets timeout="10000">
     <img id="wtex" src="https://cdn.aframe.io/a-painter/images/floor.jpg" crossorigin="anonymous">
     <a-asset-item id="cup-glb" src="assets/coffee_cup.glb"></a-asset-item>
+    <a-asset-item id="student-glb" src="assets/student.glb"></a-asset-item>
   </a-assets>
 
   <a-marker id="hiro" preset="hiro" smooth="true" smoothCount="5" emitevents="true">
@@ -300,33 +301,17 @@ function makeStud(container, isNM) {
   el.setAttribute('material', 'opacity:0; transparent:true; side:double');
 
   var torso = document.createElement('a-entity');
-  torso.setAttribute('geometry', 'primitive:cylinder; radius:0.09; height:0.22');
-  torso.setAttribute('material', 'color:' + col);
-  torso.setAttribute('position', '0 0.11 0');
-  var head = document.createElement('a-entity');
-  head.setAttribute('geometry', 'primitive:sphere; radius:0.09');
-  head.setAttribute('material', 'color:#e8c4a0');
-  head.setAttribute('position', '0 0.2 0');
-  head.setAttribute('animation', 'property:rotation; from:0 0 -5; to:0 0 5; dur:450; dir:alternate; loop:true');
-  torso.appendChild(head);
-  function mkLeg(px, fa, ta) {
-    var l = document.createElement('a-entity');
-    l.setAttribute('geometry', 'primitive:box; width:0.06; height:0.22; depth:0.06');
-    l.setAttribute('material', 'color:#2C3E50');
-    l.setAttribute('position', px);
-    l.setAttribute('animation', 'property:rotation; from:' + fa + ' 0 0; to:' + ta + ' 0 0; dur:380; dir:alternate; loop:true');
-    return l;
-  }
-  torso.appendChild(mkLeg('-.05 -.19 0', '-18', '18'));
-  torso.appendChild(mkLeg('.05 -.19 0', '18', '-18'));
+  torso.setAttribute('gltf-model', '#student-glb');
+  torso.setAttribute('scale', isNM ? '0.35 0.35 0.35' : '0.5 0.5 0.5');
+  torso.setAttribute('position', '0 ' + (isNM ? '-0.27' : '-0.27') + ' 0');
   el.appendChild(torso);
   el.setAttribute('animation__walk',
     'property:position; from:' + startX + ' ' + y + ' ' + z +
     '; to:' + endX + ' ' + y + ' ' + z +
     '; dur:' + dur + '; easing:linear');
 
-  el.addEventListener('mouseenter', function() { torso.setAttribute('material', 'color:#FF4444'); });
-  el.addEventListener('mouseleave', function() { torso.setAttribute('material', 'color:' + col); });
+  el.addEventListener('mouseenter', function() { torso.setAttribute('scale', isNM ? '0.39 0.39 0.39' : '0.55 0.55 0.55'); });
+  el.addEventListener('mouseleave', function() { torso.setAttribute('scale', isNM ? '0.35 0.35 0.35' : '0.5 0.5 0.5'); });
 
   var hit = false;
   function onHit(e) {

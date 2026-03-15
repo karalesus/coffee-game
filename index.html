@@ -149,6 +149,7 @@
     <img id="tex-brick" src="https://cdn.aframe.io/a-painter/images/floor.jpg" crossorigin="anonymous">
     <img id="tex-sky" src="https://cdn.aframe.io/360-image-gallery-boilerplate/img/sechelt.jpg" crossorigin="anonymous">
     <a-asset-item id="cup-model" src="assets/coffee_cup.glb"></a-asset-item>
+    <a-asset-item id="student-model" src="assets/student.glb"></a-asset-item>
   </a-assets>
 
   <a-sky id="sky" src="#tex-sky" rotation="0 -90 0"></a-sky>
@@ -391,38 +392,15 @@ function spawnStudent() {
   el.setAttribute('material','opacity: 0; transparent: true; side: double');
 
   var torso = document.createElement('a-entity');
-  torso.setAttribute('geometry','primitive: cylinder; radius: 0.28; height: 0.55');
-  torso.setAttribute('material','color: '+col);
-  torso.setAttribute('position','0 0.28 0');
-
-  var head = document.createElement('a-entity');
-  head.setAttribute('geometry','primitive: sphere; radius: 0.22');
-  head.setAttribute('material','color: #e8c4a0');
-  head.setAttribute('position','0 0.46 0');
-  head.setAttribute('animation','property: rotation; from: 0 0 -5; to: 0 0 5; dur: 500; dir: alternate; loop: true');
-
-  var glasses = document.createElement('a-entity');
-  glasses.setAttribute('geometry','primitive: plane; width: 0.3; height: 0.1');
-  glasses.setAttribute('material','color: #333');
-  glasses.setAttribute('position','0 0.04 0.2');
-  glasses.setAttribute('rotation','-15 0 0');
-  head.appendChild(glasses);
-
-  var mkLeg = function(px, from, to) {
-    var l = document.createElement('a-entity');
-    l.setAttribute('geometry','primitive: box; width: 0.14; height: 0.48; depth: 0.14');
-    l.setAttribute('material','color: #2C3E50');
-    l.setAttribute('position',px);
-    l.setAttribute('animation','property: rotation; from: '+from+' 0 0; to: '+to+' 0 0; dur: 400; dir: alternate; loop: true');
-    return l;
-  };
-  torso.append(head, mkLeg('-.12 -.5 0','-20','20'), mkLeg('.12 -.5 0','20','-20'));
+  torso.setAttribute('gltf-model','#student-model');
+  torso.setAttribute('scale','0.7 0.7 0.7');
+  torso.setAttribute('position','0 -0.7 0');
   el.appendChild(torso);
 
   el.setAttribute('animation__walk','property: position; from: '+(side*14)+' 0 '+z+'; to: '+(-side*14)+' 0 '+z+'; dur: '+dur+'; easing: linear');
 
-  el.addEventListener('mouseenter', function(){ torso.setAttribute('material','color: #FF4444'); });
-  el.addEventListener('mouseleave', function(){ torso.setAttribute('material','color: '+col); });
+  el.addEventListener('mouseenter', function(){ torso.setAttribute('scale','0.78 0.78 0.78'); });
+  el.addEventListener('mouseleave', function(){ torso.setAttribute('scale','0.7 0.7 0.7'); });
 
   var hit = false;
   el.addEventListener('click', function(){
