@@ -87,11 +87,11 @@
 
 <div id="start-screen">
   <h1>Кофейня</h1>
-  <p>Собирай стаканчики с кофе, не трогай однокурсников!</p>
+  <p>Собирай стаканчики с кофе!</p>
   <div class="hint-grid">
-    <div class="hint-card"><span><b>+5</b> обычный кофе</span></div>
-    <div class="hint-card"><span><b>−5</b> задела студента</span></div>
+    <div class="hint-card"><span><b>+5</b> за стаканчик</span></div>
     <div class="hint-card"><span>60 секунд на смену</span></div>
+  </div>
   <div>
     <button class="btn" id="btn-start">Начать игру</button>
     <button class="btn btn-ar" onclick="window.open('ar.html','_blank')">AR маркер</button>
@@ -136,7 +136,6 @@
     <img id="tex-brick" src="https://cdn.aframe.io/a-painter/images/floor.jpg" crossorigin="anonymous">
     <img id="tex-sky" src="https://cdn.aframe.io/360-image-gallery-boilerplate/img/sechelt.jpg" crossorigin="anonymous">
     <a-asset-item id="cup-model" src="assets/coffee_cup.glb"></a-asset-item>
-    <a-asset-item id="student-model" src="assets/student.glb"></a-asset-item>
   </a-assets>
 
   <a-sky id="sky" src="#tex-sky" rotation="0 -90 0"></a-sky>
@@ -201,7 +200,6 @@
 <script>
 var GAME_DURATION = 60;
 var CUP_PTS = 5;
-var PENALTY = 5;
 
 var LEVELS = [
   [0,  'Стажёр'],
@@ -226,10 +224,8 @@ var caught = 0;
 var miss = 0;
 var gameRunning = false;
 var cupN = 0;
-var studN = 0;
 var timerID = null;
 var spawnID = null;
-var studID = null;
 
 var audioCtx = null;
 
@@ -259,11 +255,6 @@ function playTone(freq, type, dur, vol, delay) {
 function sndCollect() {
   playTone(440, 'sine', 0.12, 0.3);
   playTone(554, 'sine', 0.12, 0.3, 0.1);
-}
-
-function sndPenalty() {
-  playTone(220, 'sawtooth', 0.18, 0.25);
-  playTone(180, 'sawtooth', 0.15, 0.25, 0.14);
 }
 
 function sndEnd() {
@@ -308,12 +299,10 @@ function startGame() {
   caught = 0;
   miss = 0;
   cupN = 0;
-  studN = 0;
   gameRunning = true;
 
   clearInterval(timerID);
   clearInterval(spawnID);
-  clearInterval(studID);
 
   startScreen.classList.add('hidden');
   finalScreen.classList.remove('visible');
@@ -332,14 +321,12 @@ function startGame() {
 
   spawnCup();
   spawnID = setInterval(spawnCup, 2000);
-  studID = setInterval(spawnStudent, 4000);
 }
 
 function endGame() {
   gameRunning = false;
   clearInterval(timerID);
   clearInterval(spawnID);
-  clearInterval(studID);
   sndEnd();
 
   setTimeout(function () {
@@ -416,55 +403,6 @@ function spawnCup() {
       if (el.parentNode) el.remove();
     }
   }, lifetime + 300);
-}
-
-function spawnStudent() {
-  if (!gameRunning) return;
-
-  var side = Math.random() < 0.5 ? -1 : 1;
-  var z = (Math.random() - 0.5) * 10 - 2;
-  var startX = side * 14;
-  var endX = -side * 14;
-  var walkDuration = 4000 + Math.floor(Math.random() * 2000);
-
-  var el = document.createElement('a-entity');
-  el.setAttribute('id', 'stud' + (studN++));
-  el.setAttribute('class', 'clickable');
-  el.setAttribute('data-clickable', '');
-  el.setAttribute('position', startX + ' 0 ' + z);
-  el.setAttribute('rotation', '0 ' + (side > 0 ? 270 : 90) + ' 0');
-  el.setAttribute('geometry', 'primitive: box; width: 0.7; height: 1.4; depth: 0.7');
-  el.setAttribute('material', 'opacity: 0; transparent: true; side: double');
-
-  var model = document.createElement('a-entity');
-  model.setAttribute('gltf-model', '#student-model');
-  model.setAttribute('scale', '0.7 0.7 0.7');
-  model.setAttribute('position', '0 -0.7 0');
-  el.appendChild(model);
-
-  el.setAttribute('animation__walk', 'property: position; from: ' + startX + ' 0 ' + z + '; to: ' + endX + ' 0 ' + z + '; dur: ' + walkDuration + '; easing: linear');
-
-  el.addEventListener('mouseenter', function () { model.setAttribute('scale', '0.78 0.78 0.78'); });
-  el.addEventListener('mouseleave', function () { model.setAttribute('scale', '0.7 0.7 0.7'); });
-
-  var hit = false;
-  el.addEventListener('click', function () {
-    if (!gameRunning || hit) return;
-    hit = true;
-    combo = 0;
-    miss++;
-    updateScore(-PENALTY);
-    updateComboDisplay();
-    sndPenalty();
-    showFloatingPts('-' + PENALTY, false);
-    el.setAttribute('animation__flash', 'property: scale; from: 1.3 1.3 1.3; to: 1 1 1; dur: 260');
-    setTimeout(function () { if (el.parentNode) el.remove(); }, 400);
-  });
-
-  gameObjects.appendChild(el);
-  setTimeout(function () {
-    if (!hit && el.parentNode) el.remove();
-  }, walkDuration + 200);
 }
 </script>
 </body>
