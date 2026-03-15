@@ -246,7 +246,6 @@ function makeCup(container, isNM) {
   steam.setAttribute('animation__f', 'property:material.opacity; from:0.4; to:0; dur:1000; loop:true');
   el.appendChild(steam);
 
-  // Анимации
   el.setAttribute('animation__spin', 'property:rotation; from:0 0 0; to:0 360 0; dur:2500; loop:true; easing:linear');
   el.setAttribute('animation__bob',
     'property:position.y; from:' + y + '; to:' + (y + 0.1) +
@@ -330,9 +329,6 @@ function makeStud(container, isNM) {
   setTimeout(function() { if (!hit && el.parentNode) el.remove(); }, dur + 300);
 }
 
-/* ═══════════════════════════════════════════
-   СПАВН
-═══════════════════════════════════════════ */
 function startSpawn(isNM) {
   gameOn = true;
   var cupBox  = isNM ? camEl : document.getElementById('cups-box');

@@ -80,7 +80,6 @@ var score=0, timeLeft=60, timerInt=null;
 var cupN=0, studN=0, spawnT=null, studT=null, _actx;
 var userLat=null, userLon=null, gameStarted=false;
 
-/* ── Звук ── */
 function ac(){ if(!_actx)_actx=new(window.AudioContext||window.webkitAudioContext)(); return _actx; }
 function beep(f,d){ try{ var c=ac(),o=c.createOscillator(),g=c.createGain(); o.connect(g);g.connect(c.destination); o.frequency.value=f;g.gain.setValueAtTime(0.3,c.currentTime);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+d);o.start();o.stop(c.currentTime+d); }catch(e){} }
 function sndOk(){ beep(523,0.12); setTimeout(function(){beep(659,0.12);},100); }
@@ -90,16 +89,13 @@ function addScore(n){ score=Math.max(0,score+n); scEl.textContent=score; }
 function showPts(t,g){ var d=document.createElement('div'); d.className='fps '+(g?'g':'b'); d.textContent=t; d.style.left=(30+Math.random()*40)+'%'; d.style.top='40%'; document.body.appendChild(d); setTimeout(function(){d.remove();},1100); }
 function lvl(s){ return s>=80?'Barista Legend!':s>=50?'Barista Pro!':s>=25?'Barista Junior':'Стажёр'; }
 
-/* ── Случайный сдвиг координат ── */
-/* 1° широты ≈ 111 000 м → 0.00001° ≈ 1.1 м */
 var spawnAngle = 0;
 function rndOffset(){
-  spawnAngle += 1.2 + Math.random() * 0.8; // каждый объект в новом направлении
-  var dist = (3 + Math.random()*5) / 111000; // 3–8 метров
+  spawnAngle += 1.2 + Math.random() * 0.8;
+  var dist = (3 + Math.random()*5) / 111000;
   return { lat: Math.cos(spawnAngle)*dist, lon: Math.sin(spawnAngle)*dist };
 }
 
-/* ── Стаканчик ── */
 function makeCup(){
   if(!userLat) return;
   var o = rndOffset();
@@ -131,7 +127,6 @@ function makeCup(){
   setTimeout(function(){if(!taken&&el.parentNode)el.remove();},10000);
 }
 
-/* ── Студент ── */
 function makeStud(){
   if(!userLat) return;
   var o = rndOffset();
@@ -160,7 +155,6 @@ function makeStud(){
   setTimeout(function(){if(!hit&&el.parentNode)el.remove();},12000);
 }
 
-/* ── Спавн / таймер ── */
 function startGame(){
   if(gameStarted) return;
   gameStarted = true;
@@ -210,12 +204,10 @@ function useFallback(){
   setCoords(DEFAULT_LAT, DEFAULT_LON, true);
 }
 
-/* GPS через AR.js камеру */
 window.addEventListener('gps-camera-update-position', function(e){
   setCoords(e.detail.position.latitude, e.detail.position.longitude, false);
 });
 
-/* Резервный вариант: нативный GPS */
 if(navigator.geolocation){
   navigator.geolocation.watchPosition(
     function(pos){ setCoords(pos.coords.latitude, pos.coords.longitude, false); },
@@ -226,31 +218,26 @@ if(navigator.geolocation){
   useFallback();
 }
 
-/* Если через 12 секунд GPS не пришёл — фолбэк */
 setTimeout(function(){ if(!gameStarted) useFallback(); }, 12000);
 
-/* Тап по объекту: переводим экранные координаты в луч и ищем кликабельную сущность */
 document.querySelector('a-scene').addEventListener('loaded', function(){
   var canvas = this.canvas;
   var scene3d = this.object3D;
   var raycaster = new THREE.Raycaster();
-  var pointerNDC = new THREE.Vector2(); // нормализованные координаты -1..1
+  var pointerNDC = new THREE.Vector2();
 
-  /** Из события мыши/тача достаём координаты на экране */
   function getPointerCoords(evt){
     var x = (evt.touches && evt.touches[0]) ? evt.touches[0].clientX : evt.clientX;
     var y = (evt.touches && evt.touches[0]) ? evt.touches[0].clientY : evt.clientY;
     return { x: x || 0, y: y || 0 };
   }
 
-  /** Экранные координаты → нормализованные для Three.js (-1..1 по центру канваса) */
   function toNDC(screenX, screenY){
     var rect = canvas.getBoundingClientRect();
     pointerNDC.x = (screenX - rect.left) / rect.width * 2 - 1;
     pointerNDC.y = -(screenY - rect.top) / rect.height * 2 + 1;
   }
 
-  /** Ищем A-Frame entity с классом clickable, поднимаясь от 3D-объекта вверх по родителям */
   function findClickableEntity(threeObject){
     var obj = threeObject;
     while (obj) {
@@ -262,7 +249,6 @@ document.querySelector('a-scene').addEventListener('loaded', function(){
     return null;
   }
 
-  /** Обработчик тапа: луч из камеры → пересечения со сценой → первый clickable получает click */
   function onPointerTap(evt){
     var coords = getPointerCoords(evt);
     toNDC(coords.x, coords.y);
