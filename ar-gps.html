@@ -90,12 +90,13 @@ function addScore(n){ score=Math.max(0,score+n); scEl.textContent=score; }
 function showPts(t,g){ var d=document.createElement('div'); d.className='fps '+(g?'g':'b'); d.textContent=t; d.style.left=(30+Math.random()*40)+'%'; d.style.top='40%'; document.body.appendChild(d); setTimeout(function(){d.remove();},1100); }
 function lvl(s){ return s>=80?'Barista Legend!':s>=50?'Barista Pro!':s>=25?'Barista Junior':'Стажёр'; }
 
-/* ── Случайный сдвиг координат (2–8 метров) ── */
+/* ── Случайный сдвиг координат ── */
 /* 1° широты ≈ 111 000 м → 0.00001° ≈ 1.1 м */
+var spawnAngle = 0;
 function rndOffset(){
-  var dist = (2 + Math.random()*6) / 111000; // 2–8 метров в градусах
-  var angle = Math.random() * Math.PI * 2;
-  return { lat: Math.cos(angle)*dist, lon: Math.sin(angle)*dist };
+  spawnAngle += 1.2 + Math.random() * 0.8; // каждый объект в новом направлении
+  var dist = (3 + Math.random()*5) / 111000; // 3–8 метров
+  return { lat: Math.cos(spawnAngle)*dist, lon: Math.sin(spawnAngle)*dist };
 }
 
 /* ── Стаканчик ── */
@@ -108,8 +109,7 @@ function makeCup(){
   var el = document.createElement('a-entity');
   el.setAttribute('gps-entity-place', 'latitude: '+lat+'; longitude: '+lon+';');
   el.setAttribute('look-at', '[gps-camera]');
-  el.setAttribute('position', '0 1.5 0'); // высота ~на уровне глаз
-  el.setAttribute('scale', '3 3 3');
+  el.setAttribute('scale', '8 8 8');
   el.setAttribute('class', 'clickable');
 
   var m = document.createElement('a-entity');
@@ -117,7 +117,6 @@ function makeCup(){
   el.appendChild(m);
 
   el.setAttribute('animation__spin', 'property:rotation; to:0 360 0; dur:2500; loop:true; easing:linear');
-  el.setAttribute('animation__bob', 'property:position.y; from:1.5; to:1.8; dur:1200; dir:alternate; loop:true; easing:easeInOutSine');
 
   var taken=false;
   el.addEventListener('click', function(){
@@ -142,8 +141,7 @@ function makeStud(){
   var el = document.createElement('a-entity');
   el.setAttribute('gps-entity-place', 'latitude: '+lat+'; longitude: '+lon+';');
   el.setAttribute('look-at', '[gps-camera]');
-  el.setAttribute('position', '0 0 0');
-  el.setAttribute('scale', '3 3 3');
+  el.setAttribute('scale', '5 5 5');
   el.setAttribute('class', 'clickable');
 
   var m = document.createElement('a-entity');
