@@ -379,6 +379,8 @@ function spawnStudent() {
   var side = Math.random()<.5 ? -1 : 1;
   var z    = (Math.random()-.5)*10 - 2;
   var dur  = 4000 + Math.floor(Math.random()*2000);
+  var colors = ['#4a7c59','#3498DB','#9B59B6','#E74C3C'];
+  var col = colors[Math.floor(Math.random()*colors.length)];
 
   var el = document.createElement('a-entity');
   el.setAttribute('id', id);
@@ -389,16 +391,34 @@ function spawnStudent() {
   el.setAttribute('geometry', 'primitive: box; width: 0.7; height: 1.4; depth: 0.7');
   el.setAttribute('material', 'opacity: 0; transparent: true; side: double');
 
+  /* Модель из GLB (если assets/student.glb загрузился) */
   var model = document.createElement('a-entity');
   model.setAttribute('gltf-model', '#student-model');
   model.setAttribute('scale', '0.5 0.5 0.5');
   model.setAttribute('position', '0 -0.27 0');
   el.appendChild(model);
 
+  /* Fallback: видимый «студент» из примитивов; скрывается, когда загрузится GLB */
+  var fallback = document.createElement('a-entity');
+  fallback.setAttribute('position', '0 -0.7 0');
+  fallback.setAttribute('id', id + '-fallback');
+  var body = document.createElement('a-entity');
+  body.setAttribute('geometry', 'primitive: cylinder; radius: 0.22; height: 0.9');
+  body.setAttribute('material', 'color: ' + col + '; metalness: 0.1; roughness: 0.8');
+  body.setAttribute('position', '0 0.45 0');
+  fallback.appendChild(body);
+  var head = document.createElement('a-entity');
+  head.setAttribute('geometry', 'primitive: sphere; radius: 0.2');
+  head.setAttribute('material', 'color: #f5d0b0; metalness: 0; roughness: 0.9');
+  head.setAttribute('position', '0 1.1 0');
+  fallback.appendChild(head);
+  el.appendChild(fallback);
+  model.addEventListener('model-loaded', function(){ fallback.setAttribute('visible', false); });
+
   el.setAttribute('animation__walk','property: position; from: '+(side*14)+' 0 '+z+'; to: '+(-side*14)+' 0 '+z+'; dur: '+dur+'; easing: linear');
 
-  el.addEventListener('mouseenter', function(){ model.setAttribute('scale', '0.55 0.55 0.55'); });
-  el.addEventListener('mouseleave', function(){ model.setAttribute('scale', '0.5 0.5 0.5'); });
+  el.addEventListener('mouseenter', function(){ model.setAttribute('scale', '0.55 0.55 0.55'); fallback.setAttribute('scale', '1.1 1.1 1.1'); });
+  el.addEventListener('mouseleave', function(){ model.setAttribute('scale', '0.5 0.5 0.5'); fallback.setAttribute('scale', '1 1 1'); });
 
   var hit = false;
   el.addEventListener('click', function(){
