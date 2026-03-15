@@ -101,12 +101,19 @@ function showPts(t, good) {
   setTimeout(function() { d.remove(); }, 1100);
 }
 
-/* Позиция в мире перед камерой (камера в 0,0,0 смотрит в -Z) */
+/* Позиция перед AR-камерой */
 function rndPos() {
+  var cam = document.querySelector('[camera]');
+  var cx = 0, cy = 0, cz = 0;
+  if (cam && cam.object3D) {
+    var wp = new THREE.Vector3();
+    cam.object3D.getWorldPosition(wp);
+    cx = wp.x; cy = wp.y; cz = wp.z;
+  }
   return {
-    x: (Math.random() - 0.5) * 6,
-    y: 0.5 + Math.random() * 3,
-    z: -(4 + Math.random() * 6)
+    x: cx + (Math.random() - 0.5) * 4,
+    y: cy + 0.3 + Math.random() * 2,
+    z: cz - (2 + Math.random() * 4)
   };
 }
 
@@ -216,7 +223,7 @@ function setupTap() {
     var r = canvas.getBoundingClientRect();
     mouse.x = (cx - r.left) / r.width * 2 - 1;
     mouse.y = -(cy - r.top) / r.height * 2 + 1;
-    var c = document.getElementById('cam');
+    var c = document.querySelector('[camera]');
     if (!c || !c.components || !c.components.camera) return;
     ray.setFromCamera(mouse, c.components.camera.camera);
     var hits = ray.intersectObject(ascene.object3D, true);
@@ -235,11 +242,13 @@ function setupTap() {
   canvas.addEventListener('touchstart', function(e) { e.preventDefault(); onTap(e); }, { passive: false });
 }
 
-/* Старт */
-ascene.addEventListener('loaded', function() {
+/* Старт — ждём пока рендерер и камера готовы */
+ascene.addEventListener('renderstart', function() {
   setupTap();
-  startSpawn();
-  startTimer();
+  setTimeout(function() {
+    startSpawn();
+    startTimer();
+  }, 500);
 });
 </script>
 </body>
