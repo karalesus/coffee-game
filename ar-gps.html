@@ -6,12 +6,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <title>Кофейня AR (GPS)</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
-  <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.7/three.js/build/ar-threex-location-only.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/aframe/build/aframe-ar.js"></script>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     body { overflow:hidden; background:#000; font-family:'Segoe UI',sans-serif; touch-action:none; }
-
     #btns {
       position:fixed; top:12px; left:0; right:0; z-index:9999;
       display:flex; justify-content:center; gap:8px; padding:0 12px;
@@ -25,31 +23,25 @@
       -webkit-tap-highlight-color:transparent; touch-action:manipulation;
     }
     .abtn:active { background:rgba(80,40,0,.9); }
-
-  #hud {
-    position:fixed; top:62px; left:50%; transform:translateX(-50%);
-    z-index:9999; pointer-events:none;
-    background:rgba(60,30,0,.88); border:2px solid rgba(255,200,80,.4);
-    border-radius:14px; padding:8px 26px; color:#FFD700;
-    font-size:1.4em; font-weight:bold;
-  }
-  #coords {
-    position:fixed; top:110px; left:50%; transform:translateX(-50%);
-    z-index:9999; pointer-events:none;
-    font-size:12px; color:rgba(255,255,255,.9);
-    background:rgba(0,0,0,.6); padding:4px 10px; border-radius:6px;
-  }
-  #info {
+    #hud {
+      position:fixed; top:62px; left:50%; transform:translateX(-50%);
+      z-index:9999; pointer-events:none;
+      background:rgba(60,30,0,.88); border:2px solid rgba(255,200,80,.4);
+      border-radius:14px; padding:8px 26px; color:#FFD700;
+      font-size:1.4em; font-weight:bold;
+    }
+    #coords {
+      position:fixed; top:110px; left:50%; transform:translateX(-50%);
+      z-index:9999; pointer-events:none;
+      font-size:12px; color:rgba(255,255,255,.9);
+      background:rgba(0,0,0,.6); padding:4px 10px; border-radius:6px;
+    }
+    #info {
       position:fixed; bottom:16px; left:50%; transform:translateX(-50%);
       z-index:9999; pointer-events:none;
       background:rgba(0,0,0,.78); color:#fff;
       padding:10px 18px; border-radius:10px; font-size:13px;
       max-width:92%; text-align:center;
-    }
-    #gps-hint {
-      position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
-      z-index:9998; text-align:center; pointer-events:none;
-      color:#fff; background:rgba(0,0,0,.7); padding:24px; border-radius:12px;
     }
     .fps {
       position:fixed; font-size:30px; font-weight:bold;
@@ -59,7 +51,6 @@
     .fps.g { color:#FFD700; text-shadow:0 0 12px gold; }
     .fps.b { color:#FF4444; }
     @keyframes fup { 0%{opacity:1;transform:translateY(0) scale(1.2)} 100%{opacity:0;transform:translateY(-70px) scale(.8)} }
-
     #result-overlay {
       display:none; position:fixed; inset:0; z-index:10000;
       background:rgba(0,0,0,.85); justify-content:center; align-items:center;
@@ -79,7 +70,7 @@
 </div>
 
 <div id="hud">Очки: <span id="sc">0</span> | <span id="timer">60</span> с</div>
-<div id="coords">Координаты: <span id="coord-val">—</span></div>
+<div id="coords">GPS: <span id="coord-val">определяем...</span></div>
 <div id="info">Тапай стаканчики (+5), не трогай студентов (−5). 60 сек.</div>
 
 <div id="result-overlay">
@@ -92,45 +83,70 @@
 <a-scene
   id="arscene"
   embedded
-  arjs="sourceType:webcam; videoTexture:true; debugUIEnabled:false"
-  renderer="antialias:true; alpha:true"
+  arjs="sourceType:webcam; debugUIEnabled:false; detectionMode:mono_and_matrix; matrixCodeType:3x3;"
+  renderer="logarithmicDepthBuffer:true; precision:medium;"
   vr-mode-ui="enabled:false"
   loading-screen="enabled:false">
 
   <a-assets timeout="10000">
     <a-asset-item id="cup-glb" src="assets/coffee_cup.glb"></a-asset-item>
   </a-assets>
-  <a-camera id="gps-cam" gps-new-camera="gpsMinDistance: 2; simulateLatitude: 55.7539; simulateLongitude: 37.6208"></a-camera>
+  <a-entity id="ar-cam" camera></a-entity>
 </a-scene>
 
 <script>
+var DEFAULT_LAT = 55.7539, DEFAULT_LON = 37.6208;
+var userLat = DEFAULT_LAT, userLon = DEFAULT_LON;
+
 var arscene = document.getElementById('arscene');
 var scEl = document.getElementById('sc');
 var infoEl = document.getElementById('info');
 var timerEl = document.getElementById('timer');
+var coordEl = document.getElementById('coord-val');
 var resultOverlay = document.getElementById('result-overlay');
-var score = 0;
-var gameOn = false;
-var timeLeft = 60;
-var timerInterval = null;
-var cupN = 0, studN = 0;
-var spawnT = null, studT = null;
-var DEFAULT_LAT = 55.7539;
-var DEFAULT_LON = 37.6208;
-var userLat = DEFAULT_LAT, userLon = DEFAULT_LON;
 
-var gpsRoot = null;
+var score = 0, gameOn = false, timeLeft = 60, timerInterval = null;
+var cupN = 0, studN = 0, spawnT = null, studT = null;
+var camEl = null, _actx;
+
+/* --- GPS --- */
+if (navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      userLat = pos.coords.latitude;
+      userLon = pos.coords.longitude;
+      coordEl.textContent = userLat.toFixed(4) + ', ' + userLon.toFixed(4);
+    },
+    function() {
+      coordEl.textContent = DEFAULT_LAT.toFixed(4) + ', ' + DEFAULT_LON.toFixed(4) + ' (демо)';
+    },
+    { enableHighAccuracy: true, timeout: 8000 }
+  );
+} else {
+  coordEl.textContent = DEFAULT_LAT.toFixed(4) + ', ' + DEFAULT_LON.toFixed(4) + ' (демо)';
+}
+
+/* --- Звук --- */
+function ac() {
+  if (!_actx) _actx = new (window.AudioContext || window.webkitAudioContext)();
+  return _actx;
+}
+function beep(f, d, v) {
+  try {
+    var c = ac(), o = c.createOscillator(), g = c.createGain();
+    o.connect(g); g.connect(c.destination);
+    o.type = 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(v || 0.3, c.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + d);
+    o.start(); o.stop(c.currentTime + d);
+  } catch(e) {}
+}
+function sndOk()  { beep(523,.12,.4); setTimeout(function(){beep(659,.12,.4);},100); }
+function sndBad() { beep(200,.25,.3); }
 
 function addScore(n) {
   score = Math.max(0, score + n);
   scEl.textContent = score;
-}
-
-function getBaristaLevel(s) {
-  if (s >= 80) return 'Barista Legend!';
-  if (s >= 50) return 'Barista Pro!';
-  if (s >= 25) return 'Barista Junior';
-  return 'Стажёр';
 }
 
 function showPts(txt, good) {
@@ -143,76 +159,69 @@ function showPts(txt, good) {
   setTimeout(function() { d.remove(); }, 1100);
 }
 
-function sndOk() {
-  try {
-    var ctx = new (window.AudioContext || window.webkitAudioContext)();
-    var o = ctx.createOscillator(); var g = ctx.createGain();
-    o.connect(g); g.connect(ctx.destination);
-    o.frequency.value = 523; g.gain.setValueAtTime(0.3, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
-    o.start(); o.stop(ctx.currentTime + 0.12);
-  } catch (e) {}
-}
-function sndBad() {
-  try {
-    var ctx = new (window.AudioContext || window.webkitAudioContext)();
-    var o = ctx.createOscillator(); var g = ctx.createGain();
-    o.connect(g); g.connect(ctx.destination);
-    o.frequency.value = 200; g.gain.setValueAtTime(0.3, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
-    o.start(); o.stop(ctx.currentTime + 0.25);
-  } catch (e) {}
+function getBaristaLevel(s) {
+  if (s >= 80) return 'Barista Legend!';
+  if (s >= 50) return 'Barista Pro!';
+  if (s >= 25) return 'Barista Junior';
+  return 'Стажёр';
 }
 
-function randomLocalPos() {
-  return {
-    x: (Math.random() - 0.5) * 3,
-    y: (Math.random() - 0.5) * 0.6,
-    z: (Math.random() - 0.5) * 2 - 1
-  };
+/* --- Камера и мир --- */
+function getCamera(cb) {
+  var cam = document.querySelector('[camera]');
+  if (cam && cam.object3D) { cb(cam); return; }
+  var t = setInterval(function() {
+    cam = document.querySelector('[camera]');
+    if (cam && cam.object3D) { clearInterval(t); cb(cam); }
+  }, 200);
 }
 
 function addCursorToCamera(cam) {
-  if (!cam || cam.querySelector('a-cursor')) return;
+  if (cam.querySelector('a-cursor')) return;
   var cur = document.createElement('a-cursor');
   cur.setAttribute('fuse', 'false');
   cur.setAttribute('color', '#ffaa00');
   cur.setAttribute('material', 'shader:flat; color:#ffaa00; opacity:0.85');
-  cur.setAttribute('raycaster', 'far: 5; objects: .clickable');
+  cur.setAttribute('raycaster', 'far: 4; objects: .clickable');
   cam.appendChild(cur);
 }
 
-function buildGpsWorld(cam) {
-  if (!cam) return;
-  var root = document.createElement('a-entity');
-  root.setAttribute('id', 'gps-root');
-  root.setAttribute('position', '0 0 -2.5');
-  var amb = document.createElement('a-light');
-  amb.setAttribute('type', 'ambient');
-  amb.setAttribute('color', '#ffeedd');
-  amb.setAttribute('intensity', '0.9');
-  root.appendChild(amb);
-  var pt = document.createElement('a-light');
-  pt.setAttribute('type', 'point');
-  pt.setAttribute('color', '#ffcc99');
-  pt.setAttribute('intensity', '1.5');
-  pt.setAttribute('position', '0 1 0');
-  pt.setAttribute('distance', '8');
-  root.appendChild(pt);
-  cam.appendChild(root);
-  gpsRoot = root;
+function buildWorld(cam) {
+  var world = document.createElement('a-entity');
+  world.setAttribute('id', 'gps-world');
+  world.setAttribute('position', '0 0 -1.5');
+
+  var bg = document.createElement('a-entity');
+  bg.setAttribute('geometry', 'primitive:plane; width:2.5; height:1.8');
+  bg.setAttribute('material', 'color:#3a1500; opacity:0.55; transparent:true; side:double');
+  bg.setAttribute('position', '0 0 -0.02');
+  world.appendChild(bg);
+
+  var lbl = document.createElement('a-text');
+  lbl.setAttribute('value', 'Кофейня AR GPS');
+  lbl.setAttribute('color', '#FFD700');
+  lbl.setAttribute('align', 'center');
+  lbl.setAttribute('position', '0 0.72 0');
+  lbl.setAttribute('scale', '0.44 0.44 0.44');
+  world.appendChild(lbl);
+
+  cam.appendChild(world);
+  camEl = world;
 }
 
+/* --- Стаканчики --- */
 function makeCup() {
-  if (!gpsRoot) return;
+  if (!camEl) return;
   var id = 'cup' + (cupN++);
-  var p = randomLocalPos();
+  var x = (Math.random() - 0.5) * 1.4;
+  var y = (Math.random() - 0.5) * 0.6;
+  var z = -(1.0 + Math.random() * 0.5);
 
   var el = document.createElement('a-entity');
   el.setAttribute('id', id);
   el.setAttribute('class', 'clickable');
   el.setAttribute('data-clickable', '');
-  el.setAttribute('position', p.x + ' ' + p.y + ' ' + p.z);
+  el.setAttribute('position', x + ' ' + y + ' ' + z);
   el.setAttribute('geometry', 'primitive:cylinder; radiusTop:0.08; radiusBottom:0.065; height:0.2; segmentsRadial:8');
   el.setAttribute('material', 'opacity:0; transparent:true; side:double');
 
@@ -220,38 +229,88 @@ function makeCup() {
   model.setAttribute('gltf-model', '#cup-glb');
   el.appendChild(model);
 
+  var steam = document.createElement('a-entity');
+  steam.setAttribute('geometry', 'primitive:sphere; radius:0.016');
+  steam.setAttribute('material', 'color:#fff; opacity:0.4; transparent:true');
+  steam.setAttribute('position', '0 0.14 0');
+  steam.setAttribute('animation', 'property:position; from:0 0.14 0; to:0 0.32 0; dur:1000; loop:true; easing:easeOutQuad');
+  steam.setAttribute('animation__f', 'property:material.opacity; from:0.4; to:0; dur:1000; loop:true');
+  el.appendChild(steam);
+
+  el.setAttribute('animation__spin', 'property:rotation; from:0 0 0; to:0 360 0; dur:2500; loop:true; easing:linear');
+  el.setAttribute('animation__bob',
+    'property:position.y; from:' + y + '; to:' + (y + 0.1) +
+    '; dur:' + (1100 + Math.floor(Math.random() * 300)) +
+    '; dir:alternate; loop:true; easing:easeInOutSine');
+
   var taken = false;
   function onTap(e) {
     if (taken) return;
     e.preventDefault(); e.stopPropagation();
     taken = true;
-    var pts = 5;
-    addScore(pts); sndOk(); showPts('+' + pts, true);
-    infoEl.textContent = '+' + pts + ' | Очки: ' + score;
+    addScore(5); sndOk(); showPts('+5', true);
+    infoEl.textContent = '+5 | Очки: ' + score;
     el.setAttribute('animation__col', 'property:scale; from:1 1 1; to:0 0 0; dur:250; easing:easeInBack');
     setTimeout(function() { if (el.parentNode) el.remove(); }, 280);
   }
   el.addEventListener('click', onTap);
   el.addEventListener('touchstart', onTap, { passive: false });
+  el.addEventListener('mouseenter', function() { el.setAttribute('scale', '1.2 1.2 1.2'); });
+  el.addEventListener('mouseleave', function() { el.setAttribute('scale', '1 1 1'); });
 
-  gpsRoot.appendChild(el);
+  camEl.appendChild(el);
   setTimeout(function() { if (!taken && el.parentNode) el.remove(); }, 5000);
 }
 
+/* --- Однокурсники --- */
 function makeStud() {
-  if (!gpsRoot) return;
+  if (!camEl) return;
   var id = 'stud' + (studN++);
-  var p = randomLocalPos();
+  var side = Math.random() < 0.5 ? -1 : 1;
   var cols = ['#4a7c59', '#3498DB', '#9B59B6', '#E74C3C'];
   var col = cols[Math.floor(Math.random() * cols.length)];
+  var dur = 3500 + Math.floor(Math.random() * 2000);
+  var startX = side * 1.0, endX = -startX;
+  var y = -0.3, z = -(1.0 + Math.random() * 0.4);
 
   var el = document.createElement('a-entity');
   el.setAttribute('id', id);
   el.setAttribute('class', 'clickable');
   el.setAttribute('data-clickable', '');
-  el.setAttribute('position', p.x + ' ' + p.y + ' ' + p.z);
+  el.setAttribute('position', startX + ' ' + y + ' ' + z);
+  el.setAttribute('rotation', '0 ' + (side > 0 ? 270 : 90) + ' 0');
   el.setAttribute('geometry', 'primitive:box; width:0.25; height:0.55; depth:0.25');
-  el.setAttribute('material', 'color:' + col);
+  el.setAttribute('material', 'opacity:0; transparent:true; side:double');
+
+  var torso = document.createElement('a-entity');
+  torso.setAttribute('geometry', 'primitive:cylinder; radius:0.09; height:0.22');
+  torso.setAttribute('material', 'color:' + col);
+  torso.setAttribute('position', '0 0.11 0');
+  var head = document.createElement('a-entity');
+  head.setAttribute('geometry', 'primitive:sphere; radius:0.09');
+  head.setAttribute('material', 'color:#e8c4a0');
+  head.setAttribute('position', '0 0.2 0');
+  head.setAttribute('animation', 'property:rotation; from:0 0 -5; to:0 0 5; dur:450; dir:alternate; loop:true');
+  torso.appendChild(head);
+  function mkLeg(px, fa, ta) {
+    var l = document.createElement('a-entity');
+    l.setAttribute('geometry', 'primitive:box; width:0.06; height:0.22; depth:0.06');
+    l.setAttribute('material', 'color:#2C3E50');
+    l.setAttribute('position', px);
+    l.setAttribute('animation', 'property:rotation; from:' + fa + ' 0 0; to:' + ta + ' 0 0; dur:380; dir:alternate; loop:true');
+    return l;
+  }
+  torso.appendChild(mkLeg('-.05 -.19 0', '-18', '18'));
+  torso.appendChild(mkLeg('.05 -.19 0', '18', '-18'));
+  el.appendChild(torso);
+
+  el.setAttribute('animation__walk',
+    'property:position; from:' + startX + ' ' + y + ' ' + z +
+    '; to:' + endX + ' ' + y + ' ' + z +
+    '; dur:' + dur + '; easing:linear');
+
+  el.addEventListener('mouseenter', function() { torso.setAttribute('material', 'color:#FF4444'); });
+  el.addEventListener('mouseleave', function() { torso.setAttribute('material', 'color:' + col); });
 
   var hit = false;
   function onHit(e) {
@@ -259,28 +318,39 @@ function makeStud() {
     e.preventDefault(); e.stopPropagation();
     hit = true;
     addScore(-5); sndBad(); showPts('-5', false);
-    infoEl.textContent = '-5! Очки: ' + score;
+    infoEl.textContent = '-5! Не трогай студентов! Очки: ' + score;
     el.setAttribute('animation__flash', 'property:scale; from:1.4 1.4 1.4; to:1 1 1; dur:260');
     setTimeout(function() { if (el.parentNode) el.remove(); }, 400);
   }
   el.addEventListener('click', onHit);
   el.addEventListener('touchstart', onHit, { passive: false });
 
-  gpsRoot.appendChild(el);
-  setTimeout(function() { if (!hit && el.parentNode) el.remove(); }, 6000);
+  camEl.appendChild(el);
+  setTimeout(function() { if (!hit && el.parentNode) el.remove(); }, dur + 300);
 }
 
+/* --- Спавн --- */
 function startSpawn() {
   gameOn = true;
   makeCup();
   spawnT = setInterval(makeCup, 2200);
   studT = setInterval(makeStud, 4200);
 }
-
 function stopSpawn() {
   gameOn = false;
   clearInterval(spawnT);
   clearInterval(studT);
+}
+
+/* --- Таймер --- */
+function startTimer() {
+  timeLeft = 60;
+  timerEl.textContent = timeLeft;
+  timerInterval = setInterval(function() {
+    timeLeft--;
+    timerEl.textContent = timeLeft;
+    if (timeLeft <= 0) { clearInterval(timerInterval); endGame(); }
+  }, 1000);
 }
 
 function endGame() {
@@ -290,72 +360,48 @@ function endGame() {
   resultOverlay.classList.add('show');
 }
 
-function startTimer() {
-  timeLeft = 60;
-  timerEl.textContent = timeLeft;
-  timerInterval = setInterval(function() {
-    timeLeft--;
-    timerEl.textContent = timeLeft;
-    if (timeLeft <= 0) {
-      clearInterval(timerInterval);
-      endGame();
-    }
-  }, 1000);
-}
-
-var coordValEl = document.getElementById('coord-val');
-if (coordValEl) coordValEl.textContent = DEFAULT_LAT.toFixed(4) + ', ' + DEFAULT_LON.toFixed(4);
-
+/* --- Играть снова --- */
 document.getElementById('btn-again').addEventListener('click', function() {
   resultOverlay.classList.remove('show');
-  score = 0;
-  scEl.textContent = '0';
-  gameOn = false;
-  timeLeft = 60;
-  timerEl.textContent = '60';
+  score = 0; scEl.textContent = '0'; gameOn = false;
+  timeLeft = 60; timerEl.textContent = '60';
   if (timerInterval) clearInterval(timerInterval);
-  [].slice.call(arscene.querySelectorAll('.clickable')).forEach(function(el) {
-    if (el.parentNode) el.parentNode.removeChild(el);
-  });
+  if (camEl) {
+    [].slice.call(camEl.querySelectorAll('.clickable')).forEach(function(el) {
+      if (el.parentNode) el.parentNode.removeChild(el);
+    });
+  }
   startSpawn();
   startTimer();
 });
 
-/* Ручной клик/тап: raycaster из камеры по канвасу */
+/* --- Клик/тап: ручной raycaster --- */
 var pointerHandlerBound = false;
 function setupPointerHandler() {
   if (pointerHandlerBound) return;
   var scene = arscene.object3D;
   var canvas = arscene.canvas || (arscene.renderer && arscene.renderer.domElement);
-  if (!canvas) {
-    setTimeout(setupPointerHandler, 400);
-    return;
-  }
+  if (!canvas) { setTimeout(setupPointerHandler, 400); return; }
   var mouse = new THREE.Vector2();
   var raycaster = new THREE.Raycaster();
 
-  function getEntityFromIntersection(obj) {
-    while (obj) {
-      if (obj.el) return obj.el;
-      obj = obj.parent;
-    }
+  function getEntity(obj) {
+    while (obj) { if (obj.el) return obj.el; obj = obj.parent; }
     return null;
   }
 
   function onPointer(evt) {
-    var clientX = evt.clientX != null ? evt.clientX : (evt.touches && evt.touches[0] ? evt.touches[0].clientX : 0);
-    var clientY = evt.clientY != null ? evt.clientY : (evt.touches && evt.touches[0] ? evt.touches[0].clientY : 0);
+    var cx = evt.clientX != null ? evt.clientX : (evt.touches && evt.touches[0] ? evt.touches[0].clientX : 0);
+    var cy = evt.clientY != null ? evt.clientY : (evt.touches && evt.touches[0] ? evt.touches[0].clientY : 0);
     var rect = canvas.getBoundingClientRect();
-    mouse.x = (clientX - rect.left) / rect.width * 2 - 1;
-    mouse.y = -(clientY - rect.top) / rect.height * 2 + 1;
-
-    var camEl = document.querySelector('[camera]');
-    if (!camEl || !camEl.components || !camEl.components.camera) return;
-    var threeCamera = camEl.components.camera.camera;
-    raycaster.setFromCamera(mouse, threeCamera);
-    var intersects = raycaster.intersectObject(scene, true);
-    for (var i = 0; i < intersects.length; i++) {
-      var el = getEntityFromIntersection(intersects[i].object);
+    mouse.x = (cx - rect.left) / rect.width * 2 - 1;
+    mouse.y = -(cy - rect.top) / rect.height * 2 + 1;
+    var cam = document.querySelector('[camera]');
+    if (!cam || !cam.components || !cam.components.camera) return;
+    raycaster.setFromCamera(mouse, cam.components.camera.camera);
+    var hits = raycaster.intersectObject(scene, true);
+    for (var i = 0; i < hits.length; i++) {
+      var el = getEntity(hits[i].object);
       if (el && el.classList && el.classList.contains('clickable')) {
         el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
         if (evt.preventDefault) evt.preventDefault();
@@ -363,26 +409,17 @@ function setupPointerHandler() {
       }
     }
   }
-
   canvas.addEventListener('click', onPointer, false);
   canvas.addEventListener('touchstart', function(e) { onPointer(e); }, { passive: false });
   pointerHandlerBound = true;
 }
 
-function getCamera(cb) {
-  var cam = document.querySelector('[camera]');
-  if (cam && cam.object3D) { cb(cam); return; }
-  var t = setInterval(function() {
-    cam = document.querySelector('[camera]');
-    if (cam && cam.object3D) { clearInterval(t); cb(cam); }
-  }, 100);
-}
-
+/* --- Старт --- */
 arscene.addEventListener('loaded', function() {
   setupPointerHandler();
   getCamera(function(cam) {
     addCursorToCamera(cam);
-    buildGpsWorld(cam);
+    buildWorld(cam);
     startSpawn();
     startTimer();
   });
