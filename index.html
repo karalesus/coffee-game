@@ -164,7 +164,7 @@
   <p>Собирай стаканчики с кофе!</p>
   <div class="hint-grid">
     <div class="hint-card"><span><b>+5</b> за стаканчик</span></div>
-    <div class="hint-card"><span>60 секунд на смену</span></div>
+    <div class="hint-card"><span>30 секунд на смену</span></div>
   </div>
   <div>
     <button class="btn" id="btn-start">Начать игру</button>
@@ -177,7 +177,7 @@
   <div id="top-bar">
     <span id="score">Очки: <span>0</span></span>
     <span id="combo-display"></span>
-    <span id="timer">Время: <span>60</span> с</span>
+    <span id="timer">Время: <span>30</span> с</span>
   </div>
 </div>
 
@@ -198,7 +198,7 @@
 </div>
 
 <script>
-var GAME_DURATION = 60;
+var GAME_DURATION = 30;
 var CUP_PTS = 5;
 
 var LEVELS = [
@@ -217,7 +217,7 @@ var finalScreen = document.getElementById('final-screen');
 var gameObjects = document.getElementById('game-objects');
 
 var score = 0;
-var timeLeft = 60;
+var timeLeft = 30;
 var combo = 0;
 var maxCombo = 0;
 var caught = 0;

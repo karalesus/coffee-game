@@ -34,7 +34,7 @@
     <a class="abtn" href="ar.html">AR маркер</a>
   </div>
   <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:0 12px 8px">
-    <div id="hud">Очки: <span id="sc">0</span> | <span id="timer">60</span> с</div>
+    <div id="hud">Очки: <span id="sc">0</span> | <span id="timer">30</span> с</div>
     <div id="coords">GPS: <span id="coord-val">определяем...</span></div>
   </div>
 </div>
@@ -76,7 +76,7 @@ var resultEl= document.getElementById('result');
 var gpsWait = document.getElementById('gps-wait');
 var world   = document.getElementById('world');
 
-var score=0, timeLeft=60, timerInt=null;
+var score=0, timeLeft=30, timerInt=null;
 var cupN=0, studN=0, spawnT=null, studT=null, _actx;
 var userLat=null, userLon=null, gameStarted=false;
 
@@ -165,7 +165,7 @@ function startGame(){
   spawnT = setInterval(makeCup, 3000);
   studT  = setInterval(makeStud, 5000);
 
-  timeLeft=60; timerEl.textContent=60;
+  timeLeft=30; timerEl.textContent=30;
   timerInt = setInterval(function(){
     timerEl.textContent=--timeLeft;
     if(timeLeft<=0){
@@ -182,7 +182,7 @@ function startGame(){
 document.getElementById('btn-again').addEventListener('click',function(){
   resultEl.classList.remove('show');
   score=0; scEl.textContent='0'; gameStarted=false;
-  timeLeft=60; timerEl.textContent='60';
+  timeLeft=30; timerEl.textContent='30';
   if(timerInt)clearInterval(timerInt);
   [].slice.call(world.children).forEach(function(c){c.remove();});
   startGame();
