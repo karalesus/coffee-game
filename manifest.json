@@ -1,0 +1,11 @@
+{
+  "name": "Кофейня AR",
+  "short_name": "Кофейня",
+  "description": "Мини-игра: собери стаканчики кофе в AR",
+  "start_url": "index.html",
+  "display": "standalone",
+  "orientation": "any",
+  "scope": "./",
+  "background_color": "#2a1810",
+  "theme_color": "#8B4513"
+}

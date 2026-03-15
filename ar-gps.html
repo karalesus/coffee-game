@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#8B4513">
   <title>Кофейня AR (GPS)</title>
   <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
   <script src="https://unpkg.com/aframe-look-at-component@1.0.0/dist/aframe-look-at-component.min.js"></script>
@@ -80,8 +82,9 @@ var score=0, timeLeft=60, timerInt=null;
 var cupN=0, studN=0, spawnT=null, studT=null, _actx;
 var userLat=null, userLon=null, gameStarted=false;
 
-/* ── Звук ── */
+/* ── Звук (на телефоне нужен первый тап для разблокировки) ── */
 function ac(){ if(!_actx)_actx=new(window.AudioContext||window.webkitAudioContext)(); return _actx; }
+function unlockAudio(){ try{ var c=ac(); if(c.state==='suspended') c.resume(); }catch(e){} }
 function beep(f,d){ try{ var c=ac(),o=c.createOscillator(),g=c.createGain(); o.connect(g);g.connect(c.destination); o.frequency.value=f;g.gain.setValueAtTime(0.3,c.currentTime);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+d);o.start();o.stop(c.currentTime+d); }catch(e){} }
 function sndOk(){ beep(523,0.12); setTimeout(function(){beep(659,0.12);},100); }
 function sndBad(){ beep(200,0.25); }
@@ -186,6 +189,7 @@ function startGame(){
 }
 
 document.getElementById('btn-again').addEventListener('click',function(){
+  unlockAudio();
   resultEl.classList.remove('show');
   score=0; scEl.textContent='0'; gameStarted=false;
   timeLeft=60; timerEl.textContent='60';
@@ -237,6 +241,7 @@ document.querySelector('a-scene').addEventListener('loaded', function(){
   var scene3d = this.object3D;
 
   function onTap(evt){
+    unlockAudio();
     var cx = evt.clientX!=null?evt.clientX:(evt.touches&&evt.touches[0]?evt.touches[0].clientX:0);
     var cy = evt.clientY!=null?evt.clientY:(evt.touches&&evt.touches[0]?evt.touches[0].clientY:0);
     var r = canvas.getBoundingClientRect();
@@ -254,6 +259,7 @@ document.querySelector('a-scene').addEventListener('loaded', function(){
   canvas.addEventListener('click', onTap, false);
   canvas.addEventListener('touchstart', function(e){e.preventDefault();onTap(e);},{passive:false});
 });
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){});
 </script>
 </body>
 </html>

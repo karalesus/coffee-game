@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#8B4513">
   <title>Кофейня — Собери стаканчики!</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/n5ro/aframe-physics-system@v4.0.1/dist/aframe-physics-system.min.js"></script>
@@ -217,6 +219,7 @@ function getACtx() {
   if (!_actx) _actx = new (window.AudioContext || window.webkitAudioContext)();
   return _actx;
 }
+function unlockAudio() { try { var c = getACtx(); if (c.state === 'suspended') c.resume(); } catch(e) {} }
 function playTone(freq, type, dur, vol, delay) {
   vol = vol || 0.28; delay = delay || 0;
   try {
@@ -283,6 +286,7 @@ function updCombo() {
 }
 
 function startGame() {
+  unlockAudio();
   score=0; timeLeft=GAME_DURATION; combo=0; maxCombo=0; caught=0; miss=0;
   cupN=0; studN=0; gameRunning=true;
   clearInterval(timerID); clearInterval(spawnID); clearInterval(studID);
@@ -414,6 +418,10 @@ function spawnStudent() {
 
   gameObjects.appendChild(el);
   setTimeout(function(){ if(!hit && el.parentNode) el.remove(); }, dur+200);
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(function() {});
 }
 </script>
 </body>
