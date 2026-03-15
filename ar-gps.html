@@ -52,8 +52,10 @@
     <a-asset-item id="cup-glb" src="assets/coffee_cup.glb"></a-asset-item>
   </a-assets>
 
-  <a-marker preset="hiro" id="fakemarker" visible="false"></a-marker>
+  <a-light type="ambient" color="#ffeedd" intensity="0.8"></a-light>
+  <a-light type="point" color="#fff" intensity="1" position="0 4 -3" distance="20"></a-light>
 
+  <a-entity id="world"></a-entity>
   <a-entity id="cam" camera></a-entity>
 </a-scene>
 
@@ -99,18 +101,17 @@ function showPts(t, good) {
   setTimeout(function() { d.remove(); }, 1100);
 }
 
-/* Позиция перед камерой */
+/* Позиция в мире перед камерой (камера в 0,0,0 смотрит в -Z) */
 function rndPos() {
   return {
-    x: (Math.random() - 0.5) * 3,
-    y: (Math.random() - 0.5) * 2,
-    z: -(1.5 + Math.random() * 2)
+    x: (Math.random() - 0.5) * 6,
+    y: 0.5 + Math.random() * 3,
+    z: -(4 + Math.random() * 6)
   };
 }
 
 /* Стаканчик */
 function makeCup() {
-  if (!camEl) return;
   var p = rndPos();
   var el = document.createElement('a-entity');
   el.setAttribute('class', 'clickable');
@@ -135,13 +136,12 @@ function makeCup() {
     setTimeout(function() { if (el.parentNode) el.remove(); }, 220);
   });
 
-  camEl.appendChild(el);
+  document.getElementById('world').appendChild(el);
   setTimeout(function() { if (!taken && el.parentNode) el.remove(); }, 6000);
 }
 
 /* Однокурсник */
 function makeStud() {
-  if (!camEl) return;
   var p = rndPos();
   var cols = ['#4a7c59', '#3498DB', '#9B59B6', '#E74C3C'];
   var col = cols[Math.floor(Math.random() * cols.length)];
@@ -174,7 +174,7 @@ function makeStud() {
     setTimeout(function() { if (el.parentNode) el.remove(); }, 300);
   });
 
-  camEl.appendChild(el);
+  document.getElementById('world').appendChild(el);
   setTimeout(function() { if (!hit && el.parentNode) el.remove(); }, 7000);
 }
 
@@ -199,7 +199,7 @@ document.getElementById('btn-again').addEventListener('click', function() {
   score = 0; scEl.textContent = '0';
   timeLeft = 60; timerEl.textContent = '60';
   if (timerInt) clearInterval(timerInt);
-  if (camEl) [].slice.call(camEl.querySelectorAll('.clickable')).forEach(function(c) { c.remove(); });
+  [].slice.call(document.getElementById('world').querySelectorAll('.clickable')).forEach(function(c) { c.remove(); });
   startSpawn(); startTimer();
 });
 
@@ -237,13 +237,6 @@ function setupTap() {
 
 /* Старт */
 ascene.addEventListener('loaded', function() {
-  var c = document.getElementById('cam');
-  var container = document.createElement('a-entity');
-  container.setAttribute('id', 'gps-world');
-  container.setAttribute('position', '0 0 0');
-  c.appendChild(container);
-  camEl = container;
-
   setupTap();
   startSpawn();
   startTimer();
