@@ -41,18 +41,19 @@
 </div>
 
 <a-scene
-  id="sc3d"
+  id="ascene"
   embedded
-  arjs="sourceType:webcam; debugUIEnabled:false; detectionMode:mono_and_matrix; matrixCodeType:3x3;"
-  renderer="logarithmicDepthBuffer:true; precision:medium"
+  arjs="sourceType:webcam; debugUIEnabled:false;"
   vr-mode-ui="enabled:false"
-  loading-screen="enabled:false">
+  loading-screen="enabled:false"
+  renderer="logarithmicDepthBuffer:true; precision:medium;">
 
   <a-assets timeout="10000">
     <a-asset-item id="cup-glb" src="assets/coffee_cup.glb"></a-asset-item>
   </a-assets>
 
-  <a-entity id="world"></a-entity>
+  <a-marker preset="hiro" id="fakemarker" visible="false"></a-marker>
+
   <a-entity id="cam" camera></a-entity>
 </a-scene>
 
@@ -63,8 +64,8 @@ var scEl = document.getElementById('sc');
 var timerEl = document.getElementById('timer');
 var infoEl = document.getElementById('info');
 var resultEl = document.getElementById('result');
-var world = document.getElementById('world');
-var scene3d = document.getElementById('sc3d');
+var ascene = document.getElementById('ascene');
+var camEl = null;
 
 var score = 0, timeLeft = 60, timerInt = null;
 var cupN = 0, studN = 0, spawnT = null, studT = null, _actx;
@@ -98,33 +99,34 @@ function showPts(t, good) {
   setTimeout(function() { d.remove(); }, 1100);
 }
 
-/* Случайная позиция перед камерой */
+/* Позиция перед камерой */
 function rndPos() {
   return {
-    x: (Math.random() - 0.5) * 4,
-    y: 0.3 + Math.random() * 2.5,
-    z: -(2 + Math.random() * 3)
+    x: (Math.random() - 0.5) * 3,
+    y: (Math.random() - 0.5) * 2,
+    z: -(1.5 + Math.random() * 2)
   };
 }
 
 /* Стаканчик */
 function makeCup() {
+  if (!camEl) return;
   var p = rndPos();
   var el = document.createElement('a-entity');
   el.setAttribute('class', 'clickable');
   el.setAttribute('data-clickable', '');
   el.setAttribute('position', p.x + ' ' + p.y + ' ' + p.z);
-  el.setAttribute('scale', '0.8 0.8 0.8');
+  el.setAttribute('scale', '0.6 0.6 0.6');
 
   var m = document.createElement('a-entity');
   m.setAttribute('gltf-model', '#cup-glb');
   el.appendChild(m);
 
   el.setAttribute('animation__spin', 'property:rotation; to:0 360 0; dur:2500; loop:true; easing:linear');
-  el.setAttribute('animation__bob', 'property:position.y; from:' + p.y + '; to:' + (p.y + 0.25) + '; dur:1200; dir:alternate; loop:true; easing:easeInOutSine');
+  el.setAttribute('animation__bob', 'property:position.y; from:' + p.y + '; to:' + (p.y + 0.2) + '; dur:1200; dir:alternate; loop:true; easing:easeInOutSine');
 
   var taken = false;
-  el.addEventListener('click', function(e) {
+  el.addEventListener('click', function() {
     if (taken) return;
     taken = true;
     addScore(5); sndOk(); showPts('+5', true);
@@ -133,12 +135,13 @@ function makeCup() {
     setTimeout(function() { if (el.parentNode) el.remove(); }, 220);
   });
 
-  world.appendChild(el);
+  camEl.appendChild(el);
   setTimeout(function() { if (!taken && el.parentNode) el.remove(); }, 6000);
 }
 
 /* Однокурсник */
 function makeStud() {
+  if (!camEl) return;
   var p = rndPos();
   var cols = ['#4a7c59', '#3498DB', '#9B59B6', '#E74C3C'];
   var col = cols[Math.floor(Math.random() * cols.length)];
@@ -163,7 +166,7 @@ function makeStud() {
   el.setAttribute('animation__bob', 'property:position.y; from:' + p.y + '; to:' + (p.y + 0.15) + '; dur:1400; dir:alternate; loop:true; easing:easeInOutSine');
 
   var hit = false;
-  el.addEventListener('click', function(e) {
+  el.addEventListener('click', function() {
     if (hit) return;
     hit = true;
     addScore(-5); sndBad(); showPts('-5', false);
@@ -171,11 +174,10 @@ function makeStud() {
     setTimeout(function() { if (el.parentNode) el.remove(); }, 300);
   });
 
-  world.appendChild(el);
+  camEl.appendChild(el);
   setTimeout(function() { if (!hit && el.parentNode) el.remove(); }, 7000);
 }
 
-/* Игра */
 function startSpawn() { makeCup(); spawnT = setInterval(makeCup, 2200); studT = setInterval(makeStud, 4200); }
 function stopSpawn() { clearInterval(spawnT); clearInterval(studT); }
 function startTimer() {
@@ -183,22 +185,28 @@ function startTimer() {
   timerInt = setInterval(function() {
     timeLeft--;
     timerEl.textContent = timeLeft;
-    if (timeLeft <= 0) { clearInterval(timerInt); stopSpawn(); document.getElementById('final-score').textContent = score; document.getElementById('level').textContent = (score >= 80 ? 'Barista Legend!' : score >= 50 ? 'Barista Pro!' : score >= 25 ? 'Barista Junior' : 'Стажёр'); resultEl.classList.add('show'); }
+    if (timeLeft <= 0) {
+      clearInterval(timerInt); stopSpawn();
+      document.getElementById('final-score').textContent = score;
+      document.getElementById('level').textContent = (score >= 80 ? 'Barista Legend!' : score >= 50 ? 'Barista Pro!' : score >= 25 ? 'Barista Junior' : 'Стажёр');
+      resultEl.classList.add('show');
+    }
   }, 1000);
 }
 
 document.getElementById('btn-again').addEventListener('click', function() {
   resultEl.classList.remove('show');
-  score = 0; scEl.textContent = '0'; timeLeft = 60; timerEl.textContent = '60';
+  score = 0; scEl.textContent = '0';
+  timeLeft = 60; timerEl.textContent = '60';
   if (timerInt) clearInterval(timerInt);
-  [].slice.call(world.children).forEach(function(c) { c.remove(); });
+  if (camEl) [].slice.call(camEl.querySelectorAll('.clickable')).forEach(function(c) { c.remove(); });
   startSpawn(); startTimer();
 });
 
-/* Ручной тап-raycaster */
-scene3d.addEventListener('loaded', function() {
-  var canvas = scene3d.canvas;
-  if (!canvas) return;
+/* Тап */
+function setupTap() {
+  var canvas = ascene.canvas;
+  if (!canvas) { setTimeout(setupTap, 300); return; }
   var mouse = new THREE.Vector2();
   var ray = new THREE.Raycaster();
 
@@ -208,10 +216,10 @@ scene3d.addEventListener('loaded', function() {
     var r = canvas.getBoundingClientRect();
     mouse.x = (cx - r.left) / r.width * 2 - 1;
     mouse.y = -(cy - r.top) / r.height * 2 + 1;
-    var cam = document.getElementById('cam');
-    if (!cam || !cam.components || !cam.components.camera) return;
-    ray.setFromCamera(mouse, cam.components.camera.camera);
-    var hits = ray.intersectObject(scene3d.object3D, true);
+    var c = document.getElementById('cam');
+    if (!c || !c.components || !c.components.camera) return;
+    ray.setFromCamera(mouse, c.components.camera.camera);
+    var hits = ray.intersectObject(ascene.object3D, true);
     for (var i = 0; i < hits.length; i++) {
       var obj = hits[i].object;
       while (obj) {
@@ -225,7 +233,18 @@ scene3d.addEventListener('loaded', function() {
   }
   canvas.addEventListener('click', onTap, false);
   canvas.addEventListener('touchstart', function(e) { e.preventDefault(); onTap(e); }, { passive: false });
+}
 
+/* Старт */
+ascene.addEventListener('loaded', function() {
+  var c = document.getElementById('cam');
+  var container = document.createElement('a-entity');
+  container.setAttribute('id', 'gps-world');
+  container.setAttribute('position', '0 0 0');
+  c.appendChild(container);
+  camEl = container;
+
+  setupTap();
   startSpawn();
   startTimer();
 });
