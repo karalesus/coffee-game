@@ -247,7 +247,7 @@ if(navigator.geolocation){
   useFallback();
 }
 
-setTimeout(function(){ if(!gameStarted) useFallback(); }, 12000);
+useFallback();
 
 document.querySelector('a-scene').addEventListener('loaded', function(){
   var canvas = this.canvas;
