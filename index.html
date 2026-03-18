@@ -225,6 +225,7 @@ var gameRunning = false;
 var cupN = 0;
 var timerID = null;
 var spawnID = null;
+var roundEndAt = 0;
 
 var audioCtx = null;
 
@@ -312,11 +313,14 @@ function startGame() {
 
   gameObjects.innerHTML = '';
 
+  roundEndAt = Date.now() + GAME_DURATION * 1000;
   timerID = setInterval(function () {
-    timeLeft--;
+    if (!gameRunning) return;
+    timeLeft = Math.max(0, Math.ceil((roundEndAt - Date.now()) / 1000));
     timerEl.textContent = timeLeft;
     if (timeLeft <= 0) endGame();
-  }, 1000);
+  }, 200);
+  timerEl.textContent = GAME_DURATION;
 
   spawnCup();
   spawnID = setInterval(spawnCup, 2000);

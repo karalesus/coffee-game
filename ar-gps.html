@@ -78,6 +78,7 @@ var sceneEl = document.querySelector('a-scene');
 var score=0, timeLeft=30, timerInt=null;
 var cupN=0, studN=0, spawnT=null, studT=null, _actx;
 var userLat=null, userLon=null, gameStarted=false;
+var roundEndAt = 0;
 
 function ac(){ if(!_actx)_actx=new(window.AudioContext||window.webkitAudioContext)(); return _actx; }
 function beep(f,d){ try{ var c=ac(),o=c.createOscillator(),g=c.createGain(); o.connect(g);g.connect(c.destination); o.frequency.value=f;g.gain.setValueAtTime(0.3,c.currentTime);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+d);o.start();o.stop(c.currentTime+d); }catch(e){} }
@@ -170,9 +171,11 @@ function startGame(){
   spawnT = setInterval(makeCup, 3000);
   studT  = setInterval(makeStud, 5000);
 
+  roundEndAt = Date.now() + 30 * 1000;
   timeLeft=30; timerEl.textContent=30;
   timerInt = setInterval(function(){
-    timerEl.textContent=--timeLeft;
+    timeLeft = Math.max(0, Math.ceil((roundEndAt - Date.now()) / 1000));
+    timerEl.textContent = timeLeft;
     if(timeLeft<=0){
       clearInterval(timerInt);
       clearInterval(spawnT);
@@ -181,7 +184,7 @@ function startGame(){
       document.getElementById('level').textContent=lvl(score);
       resultEl.classList.add('show');
     }
-  },1000);
+  },200);
 }
 
 document.getElementById('btn-again').addEventListener('click',function(){
