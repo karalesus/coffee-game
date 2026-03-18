@@ -210,7 +210,7 @@ function setCoords(lat, lon, demo){
 }
 
 function useFallback(){
-  if(gameStarted) return;
+  if(userLat != null && userLon != null) return;
   infoEl.textContent = 'GPS недоступен — используем демо-координаты (Москва).';
   var cam = document.getElementById('gps-cam');
   if(cam && cam.components['gps-camera']){
