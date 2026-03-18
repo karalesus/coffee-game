@@ -237,21 +237,20 @@ window.addEventListener('gps-camera-update-position', function(e){
   setCoords(e.detail.position.latitude, e.detail.position.longitude, false);
 });
 
-if(navigator.geolocation){
-  navigator.geolocation.watchPosition(
-    function(pos){ setCoords(pos.coords.latitude, pos.coords.longitude, false); },
-    function(){ useFallback(); },
-    {enableHighAccuracy:true, timeout:10000}
-  );
-} else {
-  useFallback();
-}
-
-useFallback();
-
 document.querySelector('a-scene').addEventListener('loaded', function(){
   var canvas = this.canvas;
   var scene3d = this.object3D;
+
+  if(navigator.geolocation){
+    navigator.geolocation.watchPosition(
+      function(pos){ setCoords(pos.coords.latitude, pos.coords.longitude, false); },
+      function(){ useFallback(); },
+      {enableHighAccuracy:true, timeout:2000}
+    );
+    setTimeout(useFallback, 2000);
+  } else {
+    useFallback();
+  }
   var raycaster = new THREE.Raycaster();
   var pointerNDC = new THREE.Vector2();
 
