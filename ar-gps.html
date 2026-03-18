@@ -13,7 +13,7 @@
     #ui{position:fixed;top:0;left:0;right:0;z-index:999;pointer-events:none}
     #btns{display:flex;justify-content:center;gap:8px;padding:12px;pointer-events:auto}
     .abtn{background:rgba(0,0,0,.8);color:#fff;border:2px solid rgba(255,200,80,.5);padding:10px 16px;border-radius:10px;font-size:13px;cursor:pointer;text-decoration:none;font-weight:bold}
-    #hud{text-align:center;background:rgba(60,30,0,.88);border:2px solid rgba(255,200,80,.4);border-radius:14px;padding:8px 26px;color:#FFD700;font-size:1.4em;font-weight:bold;display:inline-block;margin:0 auto;display:flex;justify-content:center}
+    #hud{text-align:center;background:rgba(60,30,0,.88);border:2px solid rgba(255,200,80,.4);border-radius:14px;padding:8px 26px;color:#FFD700;font-size:1.4em;font-weight:bold;display:flex;justify-content:center}
     #coords{text-align:center;font-size:12px;color:#fff;background:rgba(0,0,0,.6);padding:4px 10px;border-radius:6px;margin-top:4px;display:flex;justify-content:center}
     #info{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:999;pointer-events:none;background:rgba(0,0,0,.78);color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;max-width:92%;text-align:center}
     #gps-wait{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:999;background:rgba(0,0,0,.85);color:#fff;padding:24px 32px;border-radius:14px;text-align:center;font-size:15px}
@@ -78,7 +78,9 @@ var sceneEl = document.querySelector('a-scene');
 
 var score=0, timeLeft=30, timerInt=null;
 var cupN=0, studN=0, spawnT=null, studT=null, _actx;
-var userLat=null, userLon=null, gameStarted=false;
+var userLat=null, userLon=null;
+// FIX: два отдельных флага — сцена загружена И координаты получены
+var sceneReady=false, coordsReady=false, gameStarted=false;
 var activeCups = 0;
 
 function ac(){ if(!_actx)_actx=new(window.AudioContext||window.webkitAudioContext)(); return _actx; }
@@ -91,9 +93,9 @@ function showPts(t,g){ var d=document.createElement('div'); d.className='fps '+(
 function lvl(s){ return s>=80?'Barista Legend!':s>=50?'Barista Pro!':s>=25?'Barista Junior':'Стажёр'; }
 
 function finishGame(){
-  clearInterval(spawnT);
-  clearInterval(studT);
-  if (timerInt) { clearInterval(timerInt); timerInt = null; }
+  clearInterval(spawnT); spawnT=null;
+  clearInterval(studT);  studT=null;
+  clearInterval(timerInt); timerInt=null;
   document.getElementById('final-score').textContent=score;
   document.getElementById('level').textContent=lvl(score);
   resultEl.classList.add('show');
@@ -142,9 +144,6 @@ function makeCup(){
   activeCups++;
   if(cupsOnEl) cupsOnEl.textContent = activeCups;
   el.setAttribute('gps-entity-place', 'latitude: '+lat+'; longitude: '+lon+';');
-  if(el.components['gps-entity-place'] && el.components['gps-entity-place']._updatePosition) {
-    el.components['gps-entity-place']._updatePosition();
-  }
   setTimeout(function(){
     if(!taken && el.parentNode) el.remove();
     if(!taken && activeCups>0) activeCups--;
@@ -177,14 +176,12 @@ function makeStud(){
 
   sceneEl.appendChild(el);
   el.setAttribute('gps-entity-place', 'latitude: '+lat+'; longitude: '+lon+';');
-  if(el.components['gps-entity-place'] && el.components['gps-entity-place']._updatePosition) {
-    el.components['gps-entity-place']._updatePosition();
-  }
   setTimeout(function(){if(!hit&&el.parentNode)el.remove();},12000);
 }
 
-function startGame(){
-  if(gameStarted) return;
+// FIX: игра стартует только когда ОБА флага выставлены
+function tryStartGame(){
+  if(!sceneReady || !coordsReady || gameStarted) return;
   gameStarted = true;
   gpsWait.style.display = 'none';
   infoEl.textContent = 'Поверни телефон — ищи стаканчики вокруг! Тапай (+5), не трогай студентов (−5).';
@@ -194,23 +191,32 @@ function startGame(){
   studT  = setInterval(makeStud, 5000);
 
   timeLeft=30; timerEl.textContent=30;
-  if(timerInt) clearInterval(timerInt);
+  // FIX: таймер запускается здесь, внутри startGame, гарантированно
   timerInt = setInterval(function(){
-    timerEl.textContent = --timeLeft;
-    if(timeLeft<=0) finishGame();
+    timeLeft--;
+    timerEl.textContent = timeLeft;
+    if(timeLeft<=0){
+      clearInterval(timerInt); timerInt=null;
+      finishGame();
+    }
   }, 1000);
 }
 
 document.getElementById('btn-again').addEventListener('click',function(){
   resultEl.classList.remove('show');
-  score=0; scEl.textContent='0'; gameStarted=false;
+  score=0; scEl.textContent='0';
+  activeCups=0; cupsOnEl.textContent='0';
+  gameStarted=false;
   timeLeft=30; timerEl.textContent='30';
-  if(timerInt)clearInterval(timerInt);
+  clearInterval(timerInt); timerInt=null;
+  clearInterval(spawnT);   spawnT=null;
+  clearInterval(studT);    studT=null;
   if(sceneEl){
     var list = sceneEl.querySelectorAll('a-entity[gps-entity-place]');
     for(var i=0;i<list.length;i++) list[i].remove();
   }
-  startGame();
+  // sceneReady уже true, просто перезапускаем
+  tryStartGame();
 });
 
 var DEFAULT_LAT = 55.7539;
@@ -220,11 +226,12 @@ function setCoords(lat, lon, demo){
   userLat = lat;
   userLon = lon;
   coordEl.textContent = lat.toFixed(5)+', '+lon.toFixed(5) + (demo ? ' (демо)' : '');
-  if(!gameStarted) startGame();
+  coordsReady = true;
+  tryStartGame(); // FIX: пробуем стартовать при каждом обновлении координат
 }
 
 function useFallback(){
-  if(userLat != null && userLon != null) return;
+  if(coordsReady) return; // уже получили нормальные координаты
   infoEl.textContent = 'GPS недоступен — используем демо-координаты (Москва).';
   var cam = document.getElementById('gps-cam');
   if(cam && cam.components['gps-camera']){
@@ -241,6 +248,8 @@ document.querySelector('a-scene').addEventListener('loaded', function(){
   var canvas = this.canvas;
   var scene3d = this.object3D;
 
+  sceneReady = true; // FIX: сцена готова
+
   if(navigator.geolocation){
     navigator.geolocation.watchPosition(
       function(pos){ setCoords(pos.coords.latitude, pos.coords.longitude, false); },
@@ -251,6 +260,9 @@ document.querySelector('a-scene').addEventListener('loaded', function(){
   } else {
     useFallback();
   }
+
+  tryStartGame(); // FIX: попытка старта сразу после загрузки сцены
+
   var raycaster = new THREE.Raycaster();
   var pointerNDC = new THREE.Vector2();
 
