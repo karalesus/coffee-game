@@ -34,7 +34,7 @@
     <a class="abtn" href="ar.html">AR маркер</a>
   </div>
   <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:0 12px 8px">
-    <div id="hud">Очки: <span id="sc">0</span> | <span id="timer">30</span> с</div>
+    <div id="hud">Очки: <span id="sc">0</span> | <span id="timer">30</span> с | Стаканы: <span id="cups-on">0</span></div>
     <div id="coords">GPS: <span id="coord-val">определяем...</span></div>
   </div>
 </div>
@@ -69,6 +69,7 @@
 <script>
 var scEl    = document.getElementById('sc');
 var timerEl = document.getElementById('timer');
+var cupsOnEl= document.getElementById('cups-on');
 var infoEl  = document.getElementById('info');
 var coordEl = document.getElementById('coord-val');
 var resultEl= document.getElementById('result');
@@ -78,6 +79,7 @@ var sceneEl = document.querySelector('a-scene');
 var score=0, timeLeft=30, timerInt=null;
 var cupN=0, studN=0, spawnT=null, studT=null, _actx;
 var userLat=null, userLon=null, gameStarted=false;
+var activeCups = 0;
 
 function ac(){ if(!_actx)_actx=new(window.AudioContext||window.webkitAudioContext)(); return _actx; }
 function beep(f,d){ try{ var c=ac(),o=c.createOscillator(),g=c.createGain(); o.connect(g);g.connect(c.destination); o.frequency.value=f;g.gain.setValueAtTime(0.3,c.currentTime);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+d);o.start();o.stop(c.currentTime+d); }catch(e){} }
@@ -100,7 +102,7 @@ function finishGame(){
 var spawnAngle = 0;
 function rndOffset(){
   spawnAngle += 1.2 + Math.random() * 0.8;
-  var dist = (3 + Math.random()*5) / 111000;
+  var dist = (1 + Math.random()*2) / 111000;
   return { lat: Math.cos(spawnAngle)*dist, lon: Math.sin(spawnAngle)*dist };
 }
 
@@ -111,9 +113,11 @@ function makeCup(){
   var lon = userLon + o.lon;
 
   var el = document.createElement('a-entity');
+  el.setAttribute('id', 'cup' + (cupN++));
   el.setAttribute('look-at', '[gps-camera]');
   el.setAttribute('scale', '8 8 8');
   el.setAttribute('class', 'clickable');
+  el.setAttribute('position', '0 1.2 0');
 
   var m = document.createElement('a-entity');
   m.setAttribute('gltf-model', '#cup-glb');
@@ -127,15 +131,25 @@ function makeCup(){
     addScore(5); sndOk(); showPts('+5',true);
     infoEl.textContent='+5 | Очки: '+score;
     el.setAttribute('animation__die','property:scale; to:0 0 0; dur:300');
-    setTimeout(function(){if(el.parentNode)el.remove();},320);
+    setTimeout(function(){
+      if(el.parentNode) el.remove();
+      if(activeCups>0) activeCups--;
+      if(cupsOnEl) cupsOnEl.textContent = activeCups;
+    },320);
   });
 
   sceneEl.appendChild(el);
+  activeCups++;
+  if(cupsOnEl) cupsOnEl.textContent = activeCups;
   el.setAttribute('gps-entity-place', 'latitude: '+lat+'; longitude: '+lon+';');
   if(el.components['gps-entity-place'] && el.components['gps-entity-place']._updatePosition) {
     el.components['gps-entity-place']._updatePosition();
   }
-  setTimeout(function(){if(!taken&&el.parentNode)el.remove();},10000);
+  setTimeout(function(){
+    if(!taken && el.parentNode) el.remove();
+    if(!taken && activeCups>0) activeCups--;
+    if(!taken && cupsOnEl) cupsOnEl.textContent = activeCups;
+  },14000);
 }
 
 function makeStud(){
@@ -176,7 +190,7 @@ function startGame(){
   infoEl.textContent = 'Поверни телефон — ищи стаканчики вокруг! Тапай (+5), не трогай студентов (−5).';
 
   makeCup();
-  spawnT = setInterval(makeCup, 3000);
+  spawnT = setInterval(makeCup, 1500);
   studT  = setInterval(makeStud, 5000);
 
   timeLeft=30; timerEl.textContent=30;
