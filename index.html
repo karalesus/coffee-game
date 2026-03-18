@@ -226,6 +226,8 @@ var cupN = 0;
 var timerID = null;
 var spawnID = null;
 var roundEndAt = 0;
+var rafID = 0;
+var lastShownTime = -1;
 
 var audioCtx = null;
 
@@ -292,6 +294,9 @@ function updateComboDisplay() {
 }
 
 function startGame() {
+  if (!scoreEl) scoreEl = document.querySelector('#score span');
+  if (!timerEl) timerEl = document.querySelector('#timer span');
+  if (!comboEl) comboEl = document.getElementById('combo-display');
   score = 0;
   timeLeft = GAME_DURATION;
   combo = 0;
@@ -303,6 +308,9 @@ function startGame() {
 
   clearInterval(timerID);
   clearInterval(spawnID);
+  if (rafID) cancelAnimationFrame(rafID);
+  rafID = 0;
+  lastShownTime = -1;
 
   startScreen.classList.add('hidden');
   finalScreen.classList.remove('visible');
@@ -314,13 +322,18 @@ function startGame() {
   gameObjects.innerHTML = '';
 
   roundEndAt = Date.now() + GAME_DURATION * 1000;
-  timerID = setInterval(function () {
+  timerEl.textContent = GAME_DURATION;
+  function tick() {
     if (!gameRunning) return;
     timeLeft = Math.max(0, Math.ceil((roundEndAt - Date.now()) / 1000));
-    timerEl.textContent = timeLeft;
-    if (timeLeft <= 0) endGame();
-  }, 200);
-  timerEl.textContent = GAME_DURATION;
+    if (timeLeft !== lastShownTime) {
+      lastShownTime = timeLeft;
+      timerEl.textContent = timeLeft;
+    }
+    if (timeLeft <= 0) { endGame(); return; }
+    rafID = requestAnimationFrame(tick);
+  }
+  rafID = requestAnimationFrame(tick);
 
   spawnCup();
   spawnID = setInterval(spawnCup, 2000);
@@ -330,6 +343,8 @@ function endGame() {
   gameRunning = false;
   clearInterval(timerID);
   clearInterval(spawnID);
+  if (rafID) cancelAnimationFrame(rafID);
+  rafID = 0;
   sndEnd();
 
   setTimeout(function () {

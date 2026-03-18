@@ -79,6 +79,8 @@ var score=0, timeLeft=30, timerInt=null;
 var cupN=0, studN=0, spawnT=null, studT=null, _actx;
 var userLat=null, userLon=null, gameStarted=false;
 var roundEndAt = 0;
+var rafID = 0;
+var lastShownTime = -1;
 
 function ac(){ if(!_actx)_actx=new(window.AudioContext||window.webkitAudioContext)(); return _actx; }
 function beep(f,d){ try{ var c=ac(),o=c.createOscillator(),g=c.createGain(); o.connect(g);g.connect(c.destination); o.frequency.value=f;g.gain.setValueAtTime(0.3,c.currentTime);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+d);o.start();o.stop(c.currentTime+d); }catch(e){} }
@@ -173,18 +175,27 @@ function startGame(){
 
   roundEndAt = Date.now() + 30 * 1000;
   timeLeft=30; timerEl.textContent=30;
-  timerInt = setInterval(function(){
+  if (timerInt) clearInterval(timerInt);
+  if (rafID) cancelAnimationFrame(rafID);
+  rafID = 0;
+  lastShownTime = -1;
+  function finish(){
+    clearInterval(spawnT);
+    clearInterval(studT);
+    document.getElementById('final-score').textContent=score;
+    document.getElementById('level').textContent=lvl(score);
+    resultEl.classList.add('show');
+  }
+  function tick(){
     timeLeft = Math.max(0, Math.ceil((roundEndAt - Date.now()) / 1000));
-    timerEl.textContent = timeLeft;
-    if(timeLeft<=0){
-      clearInterval(timerInt);
-      clearInterval(spawnT);
-      clearInterval(studT);
-      document.getElementById('final-score').textContent=score;
-      document.getElementById('level').textContent=lvl(score);
-      resultEl.classList.add('show');
+    if (timeLeft !== lastShownTime) {
+      lastShownTime = timeLeft;
+      timerEl.textContent = timeLeft;
     }
-  },200);
+    if (timeLeft <= 0) { finish(); return; }
+    rafID = requestAnimationFrame(tick);
+  }
+  rafID = requestAnimationFrame(tick);
 }
 
 document.getElementById('btn-again').addEventListener('click',function(){
@@ -192,6 +203,8 @@ document.getElementById('btn-again').addEventListener('click',function(){
   score=0; scEl.textContent='0'; gameStarted=false;
   timeLeft=30; timerEl.textContent='30';
   if(timerInt)clearInterval(timerInt);
+  if(rafID)cancelAnimationFrame(rafID);
+  rafID=0;
   if(sceneEl){
     var list = sceneEl.querySelectorAll('a-entity[gps-entity-place]');
     for(var i=0;i<list.length;i++) list[i].remove();
